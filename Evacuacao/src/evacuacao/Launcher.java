@@ -24,7 +24,7 @@ import sajas.wrapper.ContainerController;
 public class Launcher extends RepastSLauncher {
 	
 	private static int NUMBER_SOLDIERS = 100;
-	//private static int N_CAPTAINS = 3;
+	private static int NUMBER_GENERAL = 10;
 
 	private ContinuousSpace<Object> space;
 	private Grid<Object> grid;
@@ -54,6 +54,11 @@ public class Launcher extends RepastSLauncher {
 			for (int i = 0; i < NUMBER_SOLDIERS; i++) {				
 				Soldier s = new Soldier(space, grid,0,0);
 				mainContainer.acceptNewAgent("Soldier" + i, s).start();								
+			}
+			
+			for (int i = 0; i < NUMBER_GENERAL; i++) {				
+				General s = new General(space, grid,0,0);
+				mainContainer.acceptNewAgent("General" + i, s).start();								
 			}
 		} catch (StaleProxyException e) {
 			e.printStackTrace();

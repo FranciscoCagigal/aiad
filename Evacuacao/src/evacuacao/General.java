@@ -2,6 +2,10 @@ package evacuacao;
 
 import java.util.List;
 
+import jade.core.AID;
+import jade.domain.FIPAException;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import repast.simphony.query.space.grid.GridCell;
@@ -15,10 +19,11 @@ import repast.simphony.space.grid.GridPoint;
 import sajas.core.Agent;
 import sajas.core.behaviours.Behaviour;
 import sajas.core.behaviours.CyclicBehaviour;
+import sajas.core.behaviours.OneShotBehaviour;
 import sajas.core.behaviours.TickerBehaviour;
+import sajas.domain.DFService;
 
-public class Soldier extends Agent {
-	
+public class General extends Agent {
 	private ContinuousSpace<Object> space;
 	private Grid<Object> grid;
 	private double posx, posy;
@@ -29,13 +34,15 @@ public class Soldier extends Agent {
 	
 	private double speed;
 	
-	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y) {
+	private AID[] sellerAgents;
+	
+	public General(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y) {
 		this.space = space;
 		this.grid = grid;
 		this.posx =x;
 		this.posy =y;
 		this.visionRadius = 2; 
-		this.speakRadius = 10;
+		this.speakRadius = 50;
 	};
 	
 	protected void setup() {
@@ -46,14 +53,30 @@ public class Soldier extends Agent {
 		grid.moveTo(this, (int) posx, (int) posy);
 
 		addBehaviour(new SearchForExit(this,1));
-		addBehaviour(new SoldierRandomMovement(this,1));
+		addBehaviour(new GeneralRandomMovement(this,1));
 		addBehaviour(new MessageListener());
-		addBehaviour(new SoldierMessages());
+		addBehaviour(new GeneralMessages());
+		
+		// Register the book-selling service in the yellow pages
+		DFAgentDescription dfd = new DFAgentDescription();
+		dfd.setName(getAID());
+		ServiceDescription sd = new ServiceDescription();
+		sd.setType("ShareGeneralExit");
+		sd.setName("JADE-ShareGeneralExit");
+		dfd.addServices(sd);
+		try {
+			DFService.register(this, dfd);
+		}
+		catch (FIPAException fe) {
+			fe.printStackTrace();
+		}
+		
+		System.out.println("criei o general");
 		
 	}
 	
-	private class SoldierRandomMovement extends TickerBehaviour {
-		public SoldierRandomMovement(Agent a, long period) {
+	private class GeneralRandomMovement extends TickerBehaviour {
+		public GeneralRandomMovement(Agent a, long period) {
 			super(a, period);
 		}
 
@@ -112,7 +135,7 @@ public class Soldier extends Agent {
 
 	}
 	
-	private class SoldierMessages extends Behaviour {
+	private class GeneralMessages extends Behaviour {
 
 		private static final long serialVersionUID = 1L;
 		
@@ -143,30 +166,6 @@ public class Soldier extends Agent {
 						break;
 					}
 				}
-				
-				GridCellNgh<General> nghCreatorGen = new GridCellNgh<General>(grid, pt, General.class, speakRadius, speakRadius);
-				List<GridCell<General>> gridCellsGen = nghCreatorGen.getNeighborhood(false);
-				message_inform = new ACLMessage(ACLMessage.INFORM);
-				
-				for (GridCell<General> cell : gridCellsGen) {
-					if (cell.size() > 0) {
-						
-						for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
-							if (obj  instanceof  General) {
-								message_inform.addReceiver(((General) obj).getAID());
-								System.out.println("adicionei");
-							}
-						}		
-
-						message_inform.setContent(exitx + "-" + exity);
-						message_inform.setConversationId("inform_exit");
-						message_inform.setReplyWith("inform_exit " + System.currentTimeMillis());
-						myAgent.send(message_inform);
-						
-						break;
-					}
-				}
-				
 			}
 			
 		}
@@ -186,21 +185,70 @@ public class Soldier extends Agent {
 		public void action() {
 			
 			if(exitx==-1) {
-				System.out.println("entrei");
 				MessageTemplate msgtemp = MessageTemplate.MatchConversationId("inform_exit");
 				ACLMessage reply = myAgent.receive(msgtemp);
+
+				try {
+					String message = reply.getContent();
+					String[] coords = message.split("-");
+					exitx = Integer.parseInt(coords[0]);
+					exity = Integer.parseInt(coords[1]);
+					
+					addBehaviour(new ShareExit());
+					
+				} catch (NullPointerException e) {
+					
+				}
 				
+				msgtemp = MessageTemplate.MatchConversationId("share_general_exit");
+				reply = myAgent.receive(msgtemp);
+
 				try {
 					String message = reply.getContent();
 					String[] coords = message.split("-");
 					exitx = Integer.parseInt(coords[0]);
 					exity = Integer.parseInt(coords[1]);
 				} catch (NullPointerException e) {
-					System.out.println("lol ");
+					
 				}
 			}
 			
 		}
 	}
+	
+	private class ShareExit extends OneShotBehaviour {
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public void action() {
+			// Update the list of Captains
+			DFAgentDescription template = new DFAgentDescription();
+			ServiceDescription sd = new ServiceDescription();
+			sd.setType("ShareGeneralExit");
+			template.addServices(sd);
+			try {
+				DFAgentDescription[] result = DFService.search(myAgent, template);
+				
+				sellerAgents = new AID[result.length];
+				for (int i = 0; i < result.length; ++i) {
+					sellerAgents[i] = result[i].getName();
+				}
+			} catch (FIPAException fe) {
+				fe.printStackTrace();
+			}
+
+			// Send the goal to all Captains
+			ACLMessage inform = new ACLMessage(ACLMessage.INFORM);
+			for (int i = 0; i < sellerAgents.length; ++i) {
+				inform.addReceiver(sellerAgents[i]);
+			}
+			inform.setContent(exitx + "-" + exity);
+			inform.setConversationId("share_general_exit");
+			inform.setReplyWith("cfp" + System.currentTimeMillis());
+			myAgent.send(inform);
+			
+		}
+	}
+	
 	
 }

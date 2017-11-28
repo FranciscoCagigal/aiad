@@ -8,7 +8,11 @@
     </entry>
     <entry>
       <string>evacuacao.Soldier</string>
-      <string>repast.simphony.visualizationOGL2D.DefaultStyleOGL2D</string>
+      <string>repast.simphony.visualization.editedStyle.EditedStyle2D</string>
+    </entry>
+    <entry>
+      <string>evacuacao.General</string>
+      <string>repast.simphony.visualization.editedStyle.EditedStyle2D</string>
     </entry>
   </styles>
   <editedStyles>
@@ -18,7 +22,11 @@
     </entry>
     <entry>
       <string>evacuacao.Soldier</string>
-      <null/>
+      <string>evacuacao.Soldier.style_0.xml</string>
+    </entry>
+    <entry>
+      <string>evacuacao.General</string>
+      <string>evacuacao.General.style_3.xml</string>
     </entry>
   </editedStyles>
   <netStyles/>
@@ -31,7 +39,7 @@
     <pType>LAST</pType>
     <duration>-1.0</duration>
     <frequency>REPEAT</frequency>
-    <hashCode>-195632603</hashCode>
+    <hashCode>670993303</hashCode>
   </schedParams>
   <layoutClassName>foo.bar.baz</layoutClassName>
   <layoutProjection>space</layoutProjection>
@@ -43,6 +51,10 @@
     </entry>
     <entry>
       <string>evacuacao.Soldier</string>
+      <int>2</int>
+    </entry>
+    <entry>
+      <string>evacuacao.General</string>
       <int>1</int>
     </entry>
   </layerOrder>
