@@ -30,7 +30,7 @@ public class General extends Agent {
 	private int visionRadius, speakRadius;
 	
 	//exit
-	private int exitx = -1,exity=-1;
+	private int exitx = -1, exity = -1;
 	
 	private double speed;
 	
@@ -39,9 +39,9 @@ public class General extends Agent {
 	public General(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y) {
 		this.space = space;
 		this.grid = grid;
-		this.posx =x;
-		this.posy =y;
-		this.visionRadius = 2; 
+		this.posx = x;
+		this.posy = y;
+		this.visionRadius = 2;
 		this.speakRadius = 50;
 	};
 	
@@ -71,7 +71,7 @@ public class General extends Agent {
 			fe.printStackTrace();
 		}
 		
-		System.out.println("criei o general");
+		//System.out.println("criei o general");
 		
 	}
 	
@@ -93,7 +93,7 @@ public class General extends Agent {
 				myPoint = space.getLocation(myAgent);
 				grid.moveTo(myAgent , (int)myPoint.getX(), (int)myPoint.getY ());
 			}else {
-				NdPoint  otherPoint = new  NdPoint(exitx,exity);
+				NdPoint  otherPoint = new NdPoint(exitx, exity);
 				
 				myPoint = space.getLocation(myAgent);
 				double distance = Math.sqrt(Math.pow(myPoint.getX()-exitx,2) + Math.pow(myPoint.getY()-exity,2));
@@ -154,7 +154,7 @@ public class General extends Agent {
 						for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
 							if (obj  instanceof  Soldier) {
 								message_inform.addReceiver(((Soldier) obj).getAID());
-								System.out.println("adicionei");
+								//System.out.println("adicionei");
 							}
 						}		
 

@@ -10,6 +10,7 @@ import repast.simphony.context.space.grid.GridFactory;
 import repast.simphony.context.space.grid.GridFactoryFinder;
 import repast.simphony.engine.environment.RunEnvironment;
 import repast.simphony.parameter.Parameters;
+import repast.simphony.space.Direction;
 import repast.simphony.space.continuous.ContinuousSpace;
 import repast.simphony.space.continuous.NdPoint;
 import repast.simphony.space.continuous.RandomCartesianAdder;
@@ -24,7 +25,7 @@ import sajas.wrapper.ContainerController;
 public class Launcher extends RepastSLauncher {
 	
 	private static int NUMBER_SOLDIERS = 100;
-	private static int NUMBER_GENERAL = 10;
+	private static int NUMBER_GENERAL = 0;
 
 	private ContinuousSpace<Object> space;
 	private Grid<Object> grid;
@@ -52,12 +53,12 @@ public class Launcher extends RepastSLauncher {
 			//NUMBER_SOLDIERS = params.getInteger("N_SOLDIERS");
 			
 			for (int i = 0; i < NUMBER_SOLDIERS; i++) {				
-				Soldier s = new Soldier(space, grid,0,0);
+				Soldier s = new Soldier(space, grid, 10, 10);
 				mainContainer.acceptNewAgent("Soldier" + i, s).start();								
 			}
 			
 			for (int i = 0; i < NUMBER_GENERAL; i++) {				
-				General s = new General(space, grid,0,0);
+				General s = new General(space, grid, 10, 10);
 				mainContainer.acceptNewAgent("General" + i, s).start();								
 			}
 		} catch (StaleProxyException e) {
@@ -86,10 +87,14 @@ public class Launcher extends RepastSLauncher {
 
 		Exit exit = new Exit(40,40);
 		context.add(exit);
-		space.moveTo(exit,40, 40);
+		space.moveTo(exit, exit.getX(), exit.getY());
 		NdPoint pt = space.getLocation(exit);
 		grid.moveTo(exit, (int) pt.getX(), (int) pt.getY());
 		
-	}
-	
+		new Wall(context, space, grid, 5, 5, 5, 15);
+		new Wall(context, space, grid, 5, 15, 20, 15);
+		new Wall(context, space, grid, 20, 5, 20, 15);
+		new Wall(context, space, grid, 5, 5, 8, 5);
+		new Wall(context, space, grid, 12, 5, 20, 5);
+	}	
 }
