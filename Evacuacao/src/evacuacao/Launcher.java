@@ -3,7 +3,6 @@ package evacuacao;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.wrapper.StaleProxyException;
@@ -14,6 +13,7 @@ import repast.simphony.context.space.grid.GridFactory;
 import repast.simphony.context.space.grid.GridFactoryFinder;
 import repast.simphony.engine.environment.RunEnvironment;
 import repast.simphony.parameter.Parameters;
+import repast.simphony.space.Direction;
 import repast.simphony.space.continuous.ContinuousSpace;
 import repast.simphony.space.continuous.NdPoint;
 import repast.simphony.space.continuous.RandomCartesianAdder;
@@ -27,7 +27,7 @@ import sajas.sim.repasts.RepastSLauncher;
 import sajas.wrapper.ContainerController;
 
 public class Launcher extends RepastSLauncher {
-	
+
 
 	private static double MAP_X = 50;
 	private static double MAP_Y = 50;
@@ -88,7 +88,6 @@ public class Launcher extends RepastSLauncher {
 				}
 			}
 			
-			
 		} catch (StaleProxyException e) {
 			e.printStackTrace();
 		}
@@ -115,10 +114,14 @@ public class Launcher extends RepastSLauncher {
 
 		Exit exit = new Exit(40,40);
 		context.add(exit);
-		space.moveTo(exit,40, 40);
+		space.moveTo(exit, exit.getX(), exit.getY());
 		NdPoint pt = space.getLocation(exit);
 		grid.moveTo(exit, (int) pt.getX(), (int) pt.getY());
 		
-	}
-	
+		new Wall(context, space, grid, 5, 5, 5, 15);
+		new Wall(context, space, grid, 5, 15, 20, 15);
+		new Wall(context, space, grid, 20, 5, 20, 15);
+		new Wall(context, space, grid, 5, 5, 8, 5);
+		new Wall(context, space, grid, 12, 5, 20, 5);
+	}	
 }

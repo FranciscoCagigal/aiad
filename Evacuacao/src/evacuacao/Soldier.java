@@ -8,12 +8,14 @@ import jade.lang.acl.MessageTemplate;
 import repast.simphony.query.space.grid.GridCell;
 import repast.simphony.query.space.grid.GridCellNgh;
 import repast.simphony.random.RandomHelper;
+import repast.simphony.space.Direction;
 import repast.simphony.space.SpatialMath;
 import repast.simphony.space.continuous.ContinuousSpace;
 import repast.simphony.space.continuous.NdPoint;
 import repast.simphony.space.grid.Grid;
 import repast.simphony.space.grid.GridPoint;
 import sajas.core.AID;
+import repast.simphony.util.SimUtilities;
 import sajas.core.Agent;
 import sajas.core.behaviours.Behaviour;
 import sajas.core.behaviours.CyclicBehaviour;
@@ -23,11 +25,11 @@ public class Soldier extends Agent {
 	
 	private ContinuousSpace<Object> space;
 	private Grid<Object> grid;
-	private double posx, posy;
+	private double posX, posY;
 	private int visionRadius, speakRadius;
 	
 	//exit
-	private int exitx = -1,exity=-1;
+	private int exitX = -1, exitY = -1;
 	
 	//general goal
 	private double generalPlaceX, generalPlaceY;
@@ -43,19 +45,18 @@ public class Soldier extends Agent {
 	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y, int vision_radius, int speak_radius, int type_of_game) {
 		this.space = space;
 		this.grid = grid;
-		this.posx =x;
-		this.posy =y;
-		this.visionRadius = vision_radius; 
+		this.posX =x;
+		this.posY =y;
+		this.visionRadius = vision_radius;
 		this.speakRadius = speak_radius;
 		this.type_of_game = type_of_game;
 	};
 	
-	protected void setup() {
-		
+	protected void setup() {		
 		speed = 1;
 
-		space.moveTo(this, posx, posy);
-		grid.moveTo(this, (int) posx, (int) posy);
+		space.moveTo(this, posX, posY);
+		grid.moveTo(this, (int) posX, (int) posY);
 
 		addBehaviour(new SearchForExit());
 		addBehaviour(new SoldierMessages());
@@ -116,7 +117,30 @@ public class Soldier extends Agent {
 				break;
 			}
 		}
-		return false;
+		return false;		
+	}
+	
+	public static boolean canMove (Grid<Object> grid, NdPoint pt1, NdPoint pt2) {
+		GridPoint pt = new GridPoint( (int) pt1.getX(), (int) pt1.getY());
+		GridCellNgh<WallChunk> nghCreator = new GridCellNgh<WallChunk>(grid, pt, WallChunk.class, 1, 1);
+		List<GridCell<WallChunk>> gridCells = nghCreator.getNeighborhood(true);
+		List<Wall> walls = new ArrayList<Wall>();
+		for (GridCell<WallChunk> cell : gridCells ) {
+			if (cell.size() > 0) {
+				for (WallChunk wc : cell.items() ) {
+					Wall wall = wc.getWall();
+					if (walls.contains(wall))
+						continue;
+					walls.add(wall);
+					if (Geometry.doLinesIntersect(pt1.getX(), pt1.getY(), pt2.getX(), pt2.getY(),
+							(double)wall.getX1(), (double)wall.getY1(),
+							(double)wall.getX2(), (double)wall.getY2() )){
+						return false;											
+					}
+				}
+			}
+		}
+		return true;
 	}
 	
 	private boolean checkForSpecificCapitan(int radius, jade.core.AID myGeneral) {
@@ -159,7 +183,7 @@ public class Soldier extends Agent {
 				}
 				break;
 			case FOUND_EXIT:
-				moveToPlace(exitx,exity);
+				moveToPlace(exitX,exitY);
 				break;
 			}
 			
@@ -178,13 +202,23 @@ public class Soldier extends Agent {
 
 		private static final long serialVersionUID = 1L;
 		@Override
-		public void action() {
-			NdPoint  myPoint;
 
-			if(exitx==-1) {
-				moveRnd();
-			}else {
-				moveToPlace(exitx,exity);
+		public void action() {
+			if(exitX==-1) {
+				
+				while(true){
+					NdPoint lastPoint = space.getLocation(myAgent);
+					double angle = moveRnd();
+					NdPoint myPoint = space.getLocation(myAgent);
+					if (canMove(grid,myPoint,  myPoint)){
+						grid.moveTo(myAgent, (int)myPoint.getX(), (int)myPoint.getY());
+						break;
+					}else {
+						moveToAngle(angle+Math.PI);
+					}
+				}
+			} else {
+				moveToPlace(exitX,exitY);
 			}
 		}
 
@@ -242,10 +276,9 @@ public class Soldier extends Agent {
 		public void action() {
 			NdPoint  myPoint;
 
-			if(exitx==-1) {
+			if(exitX==-1) {
 				
 				while(true) {
-					//System.out.println("vou mover o agente " + myAgent.getName() + " ");
 					
 					GridPoint pt = grid.getLocation(myAgent);
 					
@@ -327,17 +360,8 @@ public class Soldier extends Agent {
 				
 				
 			}else {
-				NdPoint  otherPoint = new  NdPoint(exitx,exity);
-				
-				myPoint = space.getLocation(myAgent);
-				double distance = Math.sqrt(Math.pow(myPoint.getX()-exitx,2) + Math.pow(myPoint.getY()-exity,2));
-				double  angle = SpatialMath.calcAngleFor2DMovement(space ,myPoint , otherPoint );
-				if (distance >1)
-					space.moveByVector(myAgent , speed, angle , 0);
-				else space.moveByVector(myAgent , distance, angle , 0);
-				myPoint = space.getLocation(myAgent);
-				grid.moveTo(myAgent , (int)myPoint.getX(), (int)myPoint.getY ());
-			}
+				NdPoint  otherPoint = new  NdPoint(exitX,exitY);
+				}
 		}
 
 		@Override
@@ -355,27 +379,25 @@ public class Soldier extends Agent {
 		@Override
 		public void action() {
 			GridPoint pt = grid.getLocation(myAgent);
-
+			
 			GridCellNgh<Exit> nghCreator = new GridCellNgh<Exit>(grid, pt, Exit.class, visionRadius, visionRadius);
 			List<GridCell<Exit>> gridCells = nghCreator.getNeighborhood(true);
-
 			GridPoint goal = null;
 			for (GridCell<Exit> cell : gridCells) {
 				if (cell.size() > 0) {
 					goal = cell.getPoint();
-					exitx=goal.getX();
-					exity=goal.getY();
+					exitX=goal.getX();
+					exitY=goal.getY();
 					stage=State.FOUND_EXIT;
+					myAgent.removeBehaviour(this);
+					System.out.println("encontrei saída");
 				}
 			}
 		}
-
 		@Override
 		public boolean done() {
-			// TODO Auto-generated method stub
 			return false;
-		}
-
+		}		
 	}
 	
 	private class SoldierMessages extends Behaviour {
@@ -385,8 +407,7 @@ public class Soldier extends Agent {
 		@Override
 		public void action() {
 
-			
-			if(exitx!=-1) {
+			if(exitX!=-1) {
 				GridPoint pt = grid.getLocation(myAgent);
 				GridCellNgh<Soldier> nghCreator = new GridCellNgh<Soldier>(grid, pt, Soldier.class, speakRadius, speakRadius);
 				List<GridCell<Soldier>> gridCells = nghCreator.getNeighborhood(false);
@@ -401,7 +422,7 @@ public class Soldier extends Agent {
 							}
 						}		
 
-						message_inform.setContent(exitx + "-" + exity);
+						message_inform.setContent(exitX + "-" + exitY);
 						message_inform.setConversationId("inform_exit");
 						message_inform.setReplyWith("inform_exit " + System.currentTimeMillis());
 						myAgent.send(message_inform);
@@ -422,17 +443,15 @@ public class Soldier extends Agent {
 							}
 						}		
 
-						message_inform.setContent(exitx + "-" + exity);
+						message_inform.setContent(exitX + "-" + exitY);
 						message_inform.setConversationId("inform_exit");
 						message_inform.setReplyWith("inform_exit " + System.currentTimeMillis());
 						myAgent.send(message_inform);
 						
 						break;
 					}
-				}
-				
-			}
-			
+				}				
+			}			
 		}
 
 		@Override
@@ -449,7 +468,6 @@ public class Soldier extends Agent {
 
 		@Override
 		public void action() {
-			//System.out.println("vou ouvir com agente " + myAgent.getName());
 			
 			MessageTemplate msgtemp = MessageTemplate.MatchConversationId("inform_exit");
 			ACLMessage reply = myAgent.receive(msgtemp);
@@ -457,18 +475,14 @@ public class Soldier extends Agent {
 			try {
 				String message = reply.getContent();
 				String[] coords = message.split("-");
-				System.out.println("recebi exit de " + reply.getSender());
-				exitx = Integer.parseInt(coords[0]);
-				exity = Integer.parseInt(coords[1]);
+				exitX = Integer.parseInt(coords[0]);
+				exitY = Integer.parseInt(coords[1]);
 				stage=State.FOUND_EXIT;
 				transmitNewsToNearbySoldiers(message,"inform_exit");
 			} catch (NullPointerException e) {
 			}
 			
-			if(exitx==-1) {
-				
-				
-				
+			if(exitX==-1) {
 				while(true) {
 					msgtemp = MessageTemplate.MatchConversationId("follow_me");
 					reply = myAgent.receive(msgtemp);
@@ -537,6 +551,5 @@ public class Soldier extends Agent {
 			}
 			
 		}
-	}
-	
+	}	
 }

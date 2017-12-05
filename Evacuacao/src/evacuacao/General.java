@@ -36,7 +36,7 @@ public class General extends Agent {
 	private State stage=State.MOVING;
 	
 	//exit
-	private int exitx = -1,exity=-1;
+	private int exitx = -1, exity = -1;
 	
 	private double speed;
 	
@@ -132,10 +132,7 @@ public class General extends Agent {
 		}
 		catch (FIPAException fe) {
 			fe.printStackTrace();
-		}
-		
-		System.out.println("criei o general");
-		
+		}		
 	}
 	
 	
@@ -169,7 +166,6 @@ public class General extends Agent {
 
 		@Override
 		public void action() {
-			//System.out.println("vou mover o agente " + myAgent.getName());
 			
 			NdPoint  myPoint;
 			
@@ -180,7 +176,7 @@ public class General extends Agent {
 				myPoint = space.getLocation(myAgent);
 				grid.moveTo(myAgent , (int)myPoint.getX(), (int)myPoint.getY ());
 			}else {
-				NdPoint  otherPoint = new  NdPoint(exitx,exity);
+				NdPoint  otherPoint = new NdPoint(exitx, exity);
 				
 				myPoint = space.getLocation(myAgent);
 				double distance = Math.sqrt(Math.pow(myPoint.getX()-exitx,2) + Math.pow(myPoint.getY()-exity,2));
@@ -209,7 +205,7 @@ public class General extends Agent {
 
 			GridCellNgh<Exit> nghCreator = new GridCellNgh<Exit>(grid, pt, Exit.class, visionRadius, visionRadius);
 			List<GridCell<Exit>> gridCells = nghCreator.getNeighborhood(true);
-
+			System.out.println("raio de visao do " + myAgent.getName() + " " + visionRadius);
 			GridPoint goal = null;
 			for (GridCell<Exit> cell : gridCells) {
 				if (cell.size() > 0) {
@@ -252,7 +248,8 @@ public class General extends Agent {
 				}		
 			}
 		}
-		System.out.println("counter "+ counter);
+
+		System.out.println("vou partilhar a saída " + this.getName() + " " + counter);
 		message_inform.setContent(content);
 		message_inform.setConversationId(id);
 		message_inform.setReplyWith(id + " " + System.currentTimeMillis());
@@ -284,9 +281,7 @@ public class General extends Agent {
 		
 		@Override
 		public void action() {
-			GridPoint pt = grid.getLocation(myAgent);
 			if(exitx!=-1) {
-				System.out.println("vou avisar os agentes " + myAgent.getAID());
 				transmitNewsToNearbySoldiers(exitx + "-" + exity,"inform_exit",false);
 			}
 		}
@@ -332,7 +327,6 @@ public class General extends Agent {
 					exitx = Integer.parseInt(coords[0]);
 					exity = Integer.parseInt(coords[1]);
 					stage=State.FOUND_EXIT;
-					System.out.println("vou transmitir " + myAgent.getAID());
 					transmitNewsToNearbySoldiers(message,"inform_exit",false);
 				} catch (NullPointerException e) {
 					
@@ -344,7 +338,6 @@ public class General extends Agent {
 
 					try {
 						String message = reply.getContent();
-						//System.out.println(myAgent.getName());
 						if(!arrived.contains(message)) {
 							for(int i=0;i<soldiers.size();i++) {
 								
