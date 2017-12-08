@@ -210,7 +210,7 @@ public class Soldier extends Agent {
 					NdPoint lastPoint = space.getLocation(myAgent);
 					double angle = moveRnd();
 					NdPoint myPoint = space.getLocation(myAgent);
-					if (canMove(grid,myPoint,  myPoint)){
+					if (canMove(grid,lastPoint,  myPoint)){
 						grid.moveTo(myAgent, (int)myPoint.getX(), (int)myPoint.getY());
 						break;
 					}else {
