@@ -206,7 +206,8 @@ public class MovableAgent extends Agent{
 			Arrays.fill(row, Integer.MAX_VALUE);
 		LinkedList<GridPoint> queue = new LinkedList<GridPoint>();
 		
-		GridPoint orig = new GridPoint((int) posX, (int) posY);
+		NdPoint pt0 = space.getLocation(this);
+		GridPoint orig = new GridPoint((int) pt0.getX(), (int) pt0.getY());
 		//System.out.println("orig: " + orig);
 		GridPoint dest = new GridPoint((int) pt1.getX(), (int) pt1.getY());
 		//System.out.println("dest: " + dest);
