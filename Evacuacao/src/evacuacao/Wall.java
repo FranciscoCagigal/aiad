@@ -6,9 +6,9 @@ import repast.simphony.space.continuous.NdPoint;
 import repast.simphony.space.grid.Grid;
 
 public class Wall {
-	private int x1, y1, x2, y2;
+	private double x1, y1, x2, y2;
 	
-	public Wall(Context<Object> context, ContinuousSpace<Object> space, Grid<Object> grid, int x1, int y1, int x2, int y2) {
+	public Wall(Context<Object> context, ContinuousSpace<Object> space, Grid<Object> grid, double x1, double y1, double x2, double y2) {
 		this.x1=x1;
 		this.y1=y1;
 		this.x2=x2;
@@ -27,19 +27,19 @@ public class Wall {
 		}
 	}
 	
-	public int getX1() {
+	public double getX1() {
 		return x1;
 	}
 	
-	public int getY1() {
+	public double getY1() {
 		return y1;
 	}
 	
-	public int getX2() {
+	public double getX2() {
 		return x2;
 	}
 	
-	public int getY2() {
+	public double getY2() {
 		return y2;
 	}
 }

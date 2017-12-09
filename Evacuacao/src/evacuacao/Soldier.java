@@ -39,7 +39,7 @@ public class Soldier extends MovableAgent {
 	private int MAPX = 50, MAPY=50;
 	
 	
-	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y, int vision_radius, int speak_radius, int type_of_game) {
+	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, double x, double y, int vision_radius, int speak_radius, int type_of_game) {
 		super(space,grid,speed,vision_radius,speak_radius);
 		this.space = space;
 		this.grid = grid;

@@ -66,9 +66,9 @@ public class MovableAgent extends Agent{
 					if (walls.contains(wall))
 						continue;
 					walls.add(wall);
-					if (Geometry.doLinesIntersect(pt1.getX(), pt1.getY(), pt2.getX(), pt2.getY(),
-							(double)wall.getX1(), (double)wall.getY1(),
-							(double)wall.getX2(), (double)wall.getY2() )){
+					if (Geometry.doLinesIntersect(
+							pt1.getX(), pt1.getY(), pt2.getX(), pt2.getY(),
+							wall.getX1(), wall.getY1(), wall.getX2(), wall.getY2() )){
 						return false;											
 					}
 				}
@@ -206,8 +206,12 @@ public class MovableAgent extends Agent{
 			Arrays.fill(row, Integer.MAX_VALUE);
 		LinkedList<GridPoint> queue = new LinkedList<GridPoint>();
 		
-		GridPoint orig = grid.getLocation(this);
+		NdPoint origPrecise = space.getLocation(this);
+		//System.out.println("origPrecise: " + origPrecise);
+		GridPoint orig = grid.getLocation(this);		
 		//System.out.println("orig: " + orig);
+		double dx = origPrecise.getX() - orig.getX(), dy = origPrecise.getY() - orig.getY();
+		//System.out.println("dx, dy: " + dx + " " + dy);
 		GridPoint dest = new GridPoint((int) pt1.getX(), (int) pt1.getY());
 		//System.out.println("dest: " + dest);
 		cellWeights[orig.getX()][orig.getY()] = 0;
@@ -252,25 +256,19 @@ public class MovableAgent extends Agent{
 			
 			//System.out.println("neighbours size: " + neighbours.size());
 			for (GridPoint neighbour : neighbours){
-				if (neighbour.equals(dest)){
-					destReached = true;
-					//System.out.println("destReached");
-					break;
-				}
-				if (myMap[neighbour.getX()][neighbour.getY()] &&
-						cellWeights[neighbour.getX()][neighbour.getY()] == Integer.MAX_VALUE &&
-						canMove(grid, new NdPoint(current.getX(), current.getY()), new NdPoint(neighbour.getX(), neighbour.getY()))){
+
+				if ((myMap[neighbour.getX()][neighbour.getY()] && cellWeights[neighbour.getX()][neighbour.getY()] == Integer.MAX_VALUE &&
+						canMove(grid, new NdPoint(current.getX() + dx, current.getY() + dy), new NdPoint(neighbour.getX() + dx, neighbour.getY() + dy))) ||
+						(greedy && cellWeights[neighbour.getX()][neighbour.getY()] == Integer.MAX_VALUE && !myMap[neighbour.getX()][neighbour.getY()]))	{
+					
 					queue.add(neighbour);
 					cellWeights[neighbour.getX()][neighbour.getY()] = currentValue + 1;
-					/*if (current.getX() == neighbour.getX() || current.getY() == neighbour.getY())
-						cellWeights[neighbour.getX()][neighbour.getY()] = currentValue + 2;
-					else
-						cellWeights[neighbour.getX()][neighbour.getY()] = currentValue + 3;*/
-				}
-				else if (greedy && cellWeights[neighbour.getX()][neighbour.getY()] == Integer.MAX_VALUE
-						&& !myMap[neighbour.getX()][neighbour.getY()] ){
-					queue.add(neighbour);
-					cellWeights[neighbour.getX()][neighbour.getY()] = currentValue + 1;
+					
+					if (neighbour.equals(dest)){
+						destReached = true;
+						//System.out.println("destReached");
+						break;
+					}
 				}
 			}			
 		}
@@ -307,7 +305,7 @@ public class MovableAgent extends Agent{
 					double value = cellWeights[neighbour.getX()][neighbour.getY()];
 					if (current.getX() != neighbour.getX() && current.getY() != neighbour.getY())
 						value += 0.1;
-					if (value < minValue && canMove(grid, new NdPoint(current.getX(), current.getY()), new NdPoint(neighbour.getX(), neighbour.getY()))){
+					if (value < minValue && canMove(grid, new NdPoint(current.getX() + dx, current.getY() + dy), new NdPoint(neighbour.getX() + dx, neighbour.getY() + dy))){
 						minValue = value;
 						minNeighbour = neighbour;
 					}					
