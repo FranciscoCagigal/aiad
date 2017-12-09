@@ -42,6 +42,7 @@ public class General extends MovableAgent {
 	private int type_of_game;
 	
 	private AID[] sellerAgents;
+	private Boolean hasTransmitedPosition = false;
 	
 	public General(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y, int vision_radius, int speak_radius) {
 		super(space,grid,speed,vision_radius,speak_radius);
@@ -111,7 +112,9 @@ public class General extends MovableAgent {
 		public void action() {
 			switch(stage) {
 			case MOVING:
-				moveToPlace(investigateX,investigateY);
+				if(hasTransmitedPosition){
+					moveToPlace(investigateX,investigateY);
+				}
 				break;
 			case FOUND_EXIT:
 				moveToPlace(exitx,exity);
@@ -184,6 +187,7 @@ public class General extends MovableAgent {
 	
 	private void transmitNewsToNearbySoldiers(String content, String id,Boolean restriction) {
 		GridPoint pt = grid.getLocation(this);
+		System.out.println("minha posicao "+ pt);
 		GridCellNgh<Soldier> nghCreator = new GridCellNgh<Soldier>(grid, pt, Soldier.class, speakRadius, speakRadius);
 		List<GridCell<Soldier>> gridCells = nghCreator.getNeighborhood(true);
 		ACLMessage message_inform = new ACLMessage(ACLMessage.INFORM);
@@ -204,7 +208,7 @@ public class General extends MovableAgent {
 			}
 		}
 
-		
+		System.out.println("counter "+ counter);
 		message_inform.setContent(content);
 		message_inform.setConversationId(id);
 		message_inform.setReplyWith(id + " " + System.currentTimeMillis());
@@ -223,10 +227,12 @@ public class General extends MovableAgent {
 			else distance = speakRadius;
 			String content=myAgent.getAID().toString();
 			for(int i=0;i<soldiers.size();i++) {
+				System.out.println("nova posicao "+ investigateY);
 				double realDistance = (investigateY+distance*(i+1))%mapy;
 				content+="/-/"+soldiers.get(i).toString()+"/-/"+investigateX + "/-/" + realDistance;
 			}	
 			transmitNewsToNearbySoldiers(content,"follow_me",true);
+			hasTransmitedPosition=true;
 		}		
 	}
 	
@@ -297,30 +303,27 @@ public class General extends MovableAgent {
 						String message = reply.getContent();
 						System.out.println("recebi arrived");
 						if(!arrived.contains(message)) {
+							hasTransmitedPosition=false;
 							for(int i=0;i<soldiers.size();i++) {
 								
 								if(soldiers.get(i).toString().equals(message)) {
 									arrived.add(message);
 									if(arrived.size()==soldiers.size()) {
-										System.out.println(investigateX+speed+visionRadius);
+										arrived.clear();
 										if(((int)(investigateX+speed+visionRadius)<=mapx && direction==0) || (direction==1 && (int)(investigateX-speed-visionRadius)>=0)) {
-											if(direction==0)
-												investigateX+=speed;
-											else investigateX-=speed;
-											investigateX = investigateX%mapy;
-											arrived.clear();
-											addBehaviour(new TellSoldiersArea());
+											
 										}else {
 											if(direction==1)
 												direction=0;
 											else direction=1;
-											if(direction==0)
-												investigateX+=speed;
-											else investigateX-=speed;
-											investigateX = investigateX%mapy;
-											arrived.clear();
-											addBehaviour(new TellSoldiersArea());
+											investigateY+=1;
 										}
+										if(direction==0)
+											investigateX+=speed;
+										else investigateX-=speed;
+										
+										
+										addBehaviour(new TellSoldiersArea());
 									}
 										
 									break;

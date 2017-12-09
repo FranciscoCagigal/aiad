@@ -83,7 +83,7 @@ public class Launcher extends RepastSLauncher {
 				
 				for (int i = 0; i < NUMBER_GENERAL; i++) {
 					listOfSoldiers.subList((int)soldierPerGeneral*(i), (int)soldierPerGeneral*(i+1));
-					General s = new General(space, grid,0,0,0.01,heightToSearch*(i*2+1)/2,listOfSoldiers.subList((int)soldierPerGeneral*(i), (int)soldierPerGeneral*(i+1)),MAP_X,MAP_Y,VISION_RADIUS,SPEAK_RADIUS);
+					General s = new General(space, grid,0,0,0.01,heightToSearch*i,listOfSoldiers.subList((int)soldierPerGeneral*(i), (int)soldierPerGeneral*(i+1)),MAP_X,MAP_Y,VISION_RADIUS,SPEAK_RADIUS);
 					mainContainer.acceptNewAgent("General" + i, s).start();								
 				}
 			}

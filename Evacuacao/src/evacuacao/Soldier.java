@@ -15,9 +15,6 @@ import repast.simphony.space.continuous.ContinuousSpace;
 import repast.simphony.space.continuous.NdPoint;
 import repast.simphony.space.grid.Grid;
 import repast.simphony.space.grid.GridPoint;
-import sajas.core.AID;
-import repast.simphony.util.SimUtilities;
-import sajas.core.Agent;
 import sajas.core.behaviours.Behaviour;
 import sajas.core.behaviours.CyclicBehaviour;
 import sajas.core.behaviours.OneShotBehaviour;
@@ -517,6 +514,7 @@ public class Soldier extends MovableAgent {
 							myGeneral = reply.getSender();
 						}
 						String message = reply.getContent();
+						System.out.println("recebi do general "+ message);
 						String[] coords = message.split("/-/");
 						if(myGeneral.toString().equals(coords[0])&& !reply.getSender().toString().equals(myAgent.getAID().toString()) && stage!=State.MOVING) {
 							for(int i=1;i<coords.length;i+=3) {
@@ -524,6 +522,7 @@ public class Soldier extends MovableAgent {
 									if(generalPlaceX != Double.parseDouble(coords[i+1]) || generalPlaceY != Double.parseDouble(coords[i+2])) {
 										generalPlaceX = Double.parseDouble(coords[i+1]);
 										generalPlaceY = Double.parseDouble(coords[i+2]);
+										
 										stage=State.MOVING;
 										canDelete=true;
 										transmitNewsToNearbySoldiers(message,"follow_me");
