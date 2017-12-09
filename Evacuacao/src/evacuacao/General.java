@@ -44,13 +44,13 @@ public class General extends Agent {
 	
 	private AID[] sellerAgents;
 	
-	public General(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y) {
+	public General(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y, int vision_radius, int speak_radius) {
 		this.space = space;
 		this.grid = grid;
 		this.posx =x;
 		this.posy =y;
-		this.visionRadius = 2; 
-		this.speakRadius = 1;
+		this.visionRadius = vision_radius; 
+		this.speakRadius = speak_radius;
 		type_of_game = 0;
 	};
 	
@@ -69,11 +69,30 @@ public class General extends Agent {
 		type_of_game=2;
 	};
 
-	private double moveRnd() {
-		int direction = RandomHelper.nextIntFromTo (0, 7);
-		double angle= direction*45*Math.PI/180;
-		space.moveByVector(this , speed, angle , 0);
-		NdPoint myPoint = space.getLocation(this);
+private double moveRnd() {
+		
+		int nr_tries= 0;
+		NdPoint myPoint;
+		double angle;
+		while(true){
+			NdPoint lastPoint = space.getLocation(this);
+			int direction = RandomHelper.nextIntFromTo (0, 7);
+			angle= direction*45*Math.PI/180;
+			space.moveByVector(this , speed, angle , 0);
+			myPoint = space.getLocation(this);
+			
+			nr_tries++;
+			if (canMove(grid,lastPoint,  myPoint)){
+				grid.moveTo(this, (int)myPoint.getX(), (int)myPoint.getY());
+				break;
+			}else {
+				moveToAngle(angle+Math.PI);
+			}
+			
+			if(nr_tries==10)
+				break;
+		}
+		
 		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());
 		return angle;
 	}
@@ -160,32 +179,43 @@ public class General extends Agent {
 		}
 	}
 	
+	public static boolean canMove (Grid<Object> grid, NdPoint pt1, NdPoint pt2) {
+		GridPoint pt = new GridPoint( (int) pt1.getX(), (int) pt1.getY());
+		GridCellNgh<WallChunk> nghCreator = new GridCellNgh<WallChunk>(grid, pt, WallChunk.class, 1, 1);
+		List<GridCell<WallChunk>> gridCells = nghCreator.getNeighborhood(true);
+		List<Wall> walls = new ArrayList<Wall>();
+		for (GridCell<WallChunk> cell : gridCells ) {
+			if (cell.size() > 0) {
+				for (WallChunk wc : cell.items() ) {
+					Wall wall = wc.getWall();
+					if (walls.contains(wall))
+						continue;
+					walls.add(wall);
+					if (Geometry.doLinesIntersect(pt1.getX(), pt1.getY(), pt2.getX(), pt2.getY(),
+							(double)wall.getX1(), (double)wall.getY1(),
+							(double)wall.getX2(), (double)wall.getY2() )){
+						return false;											
+					}
+				}
+			}
+		}
+		return true;
+	}
+	
 	private class GeneralRandomMovement extends Behaviour {
 
 		private static final long serialVersionUID = 1L;
 
 		@Override
-		public void action() {
-			
-			NdPoint  myPoint;
-			
+		public void action() {			
 			if(exitx==-1) {
-				int direction = RandomHelper.nextIntFromTo (0, 7);
-				double angle= direction*45*Math.PI/180;
-				space.moveByVector(myAgent , speed, angle , 0);
-				myPoint = space.getLocation(myAgent);
-				grid.moveTo(myAgent , (int)myPoint.getX(), (int)myPoint.getY ());
-			}else {
-				NdPoint  otherPoint = new NdPoint(exitx, exity);
-				
-				myPoint = space.getLocation(myAgent);
-				double distance = Math.sqrt(Math.pow(myPoint.getX()-exitx,2) + Math.pow(myPoint.getY()-exity,2));
-				double  angle = SpatialMath.calcAngleFor2DMovement(space ,myPoint , otherPoint );
-				if (distance >1)
-					space.moveByVector(myAgent , speed, angle , 0);
-				else space.moveByVector(myAgent , distance, angle , 0);
-				myPoint = space.getLocation(myAgent);
-				grid.moveTo(myAgent , (int)myPoint.getX(), (int)myPoint.getY ());
+				moveRnd();
+			} else {
+				NdPoint myPoint = moveToPlace(exitx,exity);
+				if(myPoint.getX()==exitx && myPoint.getY()==exity) {
+					stage = State.IS_IN_EXIT;
+					myAgent.removeBehaviour(this);
+				}
 			}
 		}
 
@@ -205,7 +235,6 @@ public class General extends Agent {
 
 			GridCellNgh<Exit> nghCreator = new GridCellNgh<Exit>(grid, pt, Exit.class, visionRadius, visionRadius);
 			List<GridCell<Exit>> gridCells = nghCreator.getNeighborhood(true);
-			System.out.println("raio de visao do " + myAgent.getName() + " " + visionRadius);
 			GridPoint goal = null;
 			for (GridCell<Exit> cell : gridCells) {
 				if (cell.size() > 0) {
@@ -213,6 +242,7 @@ public class General extends Agent {
 					exitx=goal.getX();
 					exity=goal.getY();
 					stage=State.FOUND_EXIT;
+					myAgent.removeBehaviour(this);
 					addBehaviour(new ShareExit());
 					transmitNewsToNearbySoldiers(exitx + "-" + exity,"inform_exit",false);
 				}
@@ -283,6 +313,8 @@ public class General extends Agent {
 		public void action() {
 			if(exitx!=-1) {
 				transmitNewsToNearbySoldiers(exitx + "-" + exity,"inform_exit",false);
+				if(stage == State.IS_IN_EXIT)
+					myAgent.removeBehaviour(this);
 			}
 		}
 

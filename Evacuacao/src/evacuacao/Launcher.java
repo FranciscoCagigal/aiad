@@ -72,7 +72,7 @@ public class Launcher extends RepastSLauncher {
 			
 			if(TYPE_OF_GAME!=2)
 				for (int i = 0; i < NUMBER_GENERAL; i++) {				
-					General s = new General(space, grid,0,0);
+					General s = new General(space, grid,0,0,VISION_RADIUS,SPEAK_RADIUS);
 					mainContainer.acceptNewAgent("General" + i, s).start();								
 				}
 			else {

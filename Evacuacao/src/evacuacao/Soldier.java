@@ -1,6 +1,7 @@
 package evacuacao;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import jade.lang.acl.ACLMessage;
@@ -41,6 +42,9 @@ public class Soldier extends Agent {
 	private double speed;
 	
 	private int type_of_game;
+	private int MAPX = 50, MAPY=50;
+	private boolean[][] myMap= new boolean[MAPX+1][MAPY+1];
+	
 	
 	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y, int vision_radius, int speak_radius, int type_of_game) {
 		this.space = space;
@@ -69,26 +73,142 @@ public class Soldier extends Agent {
 		else addBehaviour(new SoldierSuperCoordinatedRandomMovement());
 	}
 	
-	private double moveRnd() {
-		int direction = RandomHelper.nextIntFromTo (0, 7);
-		double angle= direction*45*Math.PI/180;
-		space.moveByVector(this , speed, angle , 0);
+	private int chooseRandom(ArrayList<NdPoint> positions ,ArrayList<Integer> array) {
 		NdPoint myPoint = space.getLocation(this);
-		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());
-		return angle;
+		while(true) {
+			if (positions.isEmpty())
+				return -1;
+			NdPoint position =  positions.get(RandomHelper.nextIntFromTo(0, positions.size()-1));
+			int angle = (int) ((180/Math.PI)*SpatialMath.calcAngleFor2DMovement(space ,myPoint , position ));
+			if(angle<0)
+				angle+=360;
+			int int_angle = angle / 45;
+			if(myPoint.getX()>48 )
+				System.out.println("angle " + position + " " + angle + " " + Arrays.deepToString(array.toArray()));
+			if(array.contains(int_angle)) {
+				if(myPoint.getX()>48 )
+					System.out.println("int_angle " + int_angle);
+				return int_angle;
+			}else {
+				positions.remove(position);
+			}
+		}
+		
+	}
+	
+	private ArrayList<Integer> getPossibleDirections() {
+		ArrayList<Integer> result = new ArrayList<Integer>();
+		NdPoint myPoint = space.getLocation(this);
+		for(int i=0;i<7;i++) {
+			NdPoint nextPosition = new NdPoint(myPoint.getX()+speed*Math.cos(i*45*Math.PI/180),myPoint.getY()+speed*Math.sin(45*i*Math.PI/180));
+			if(myPoint.getX()+speed*Math.cos(i*45*Math.PI/180)<=MAPX && myPoint.getY()+speed*Math.sin(45*i*Math.PI/180)<=MAPY && myPoint.getY()+speed*Math.sin(45*i*Math.PI/180)>=0 && myPoint.getX()+speed*Math.cos(i*45*Math.PI/180)>=0 && canMove(grid,myPoint,  nextPosition)) {
+				result.add(i);
+			}
+				
+		}		
+		return result;
+	}
+	
+	private ArrayList<NdPoint> getPositionsNotVisited(int radius){
+		ArrayList<NdPoint> result = new ArrayList<NdPoint> ();
+		NdPoint myPoint = space.getLocation(this);
+		int x = (int) myPoint.getX();
+		int y = (int) myPoint.getY();
+		System.out.println("começo " + this.getAID() + " " + myPoint + " " + myMap[44][44]);
+		
+		for(int i =-radius; i<= radius;i++) {
+			for(int j =-radius; j<= radius;j++) {
+				if(myPoint.getX()>48 && y+j>=0 && x+i<=MAPX && y+j<MAPY)
+				System.out.println(new NdPoint(x+i,y+j) + " " + myMap[x+i][y+j]);
+				if(x+i>=0 && x+i<=MAPX && y+j>=0 && y+j<MAPY && !myMap[x+i][y+j]) {
+					if(myPoint.getX()>48)
+					System.out.println("entrei");
+					result.add(new NdPoint(x+i,y+j));
+				}
+			}
+		}
+		return result;
+	}
+	
+	private void moveRnd() {
+		
+		int nr_tries= 0;
+		NdPoint myPoint;
+		double angle;
+		int radius = 1;
+		ArrayList<NdPoint> positions = new ArrayList<NdPoint> ();
+		while(true){
+			NdPoint lastPoint = space.getLocation(this);
+			if(positions.isEmpty())
+				positions = getPositionsNotVisited(radius);
+
+			int direction = chooseRandom(positions,getPossibleDirections());
+			if(direction!=-1) {
+				angle= direction*45*Math.PI/180;
+				space.moveByVector(this , speed, angle , 0);
+				myPoint = space.getLocation(this);
+				
+				
+				if (canMove(grid,lastPoint,  myPoint)){
+					grid.moveTo(this, (int)myPoint.getX(), (int)myPoint.getY());
+					break;
+				}else {
+					moveToAngle(angle+Math.PI);
+				}
+			}else {
+				positions.clear();
+				radius++;
+			}
+			nr_tries++;
+			if(nr_tries==50)
+				break;
+		}
+		updateMap();
+	}
+	
+	private void updateMap() {
+		NdPoint myPoint = space.getLocation(this);
+		System.out.println("minha posicao " + myPoint);
+		for(int i=0;i<=visionRadius;i++) {
+			int height = (int)myPoint.getY () + i;
+			if(height>=MAPY)
+				height=MAPY;
+			myMap[(int) Math.round(myPoint.getX())][height] = true;
+			System.out.println(new NdPoint(Math.round(myPoint.getX()),height));
+			height = (int)myPoint.getY () - i;
+			if(height<0)
+				height=0;
+			myMap[(int) Math.round(myPoint.getX())][height] = true;
+			System.out.println(new NdPoint(Math.round(myPoint.getX()),height));
+			int width = (int)myPoint.getX () + i;
+			if(width>=MAPX)
+				width=MAPX;
+			myMap[width][(int) Math.round(myPoint.getY())] = true;
+			System.out.println(new NdPoint(width,Math.round(myPoint.getY())));
+			width = (int)myPoint.getX () - i;
+			if(width<0)
+				width=0;
+			myMap[width][(int) Math.round(myPoint.getY())] = true;
+			System.out.println(new NdPoint(width,Math.round(myPoint.getY())));
+			
+		}
+		
 	}
 	
 	private NdPoint moveToPlace(double x, double y) {
 		NdPoint  otherPoint = new  NdPoint(x,y);
-		NdPoint myPoint = space.getLocation(this);
-		double distance = Math.sqrt(Math.pow(myPoint.getX()-x,2) + Math.pow(myPoint.getY()-y,2));
-		double  angle = SpatialMath.calcAngleFor2DMovement(space ,myPoint , otherPoint );
+		NdPoint lastPoint = space.getLocation(this);
+		double distance = Math.sqrt(Math.pow(lastPoint.getX()-x,2) + Math.pow(lastPoint.getY()-y,2));
+		double  angle = SpatialMath.calcAngleFor2DMovement(space ,lastPoint , otherPoint );
 		if (distance >speed)
 			space.moveByVector(this , speed, angle , 0);
 		else {
 			space.moveByVector(this , distance, angle , 0);
 		}
-		myPoint = space.getLocation(this);
+		NdPoint myPoint = space.getLocation(this);
+		if(canMove(grid,lastPoint,  myPoint)) {
+			
+		}
 		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());
 		
 		return myPoint;
@@ -97,6 +217,7 @@ public class Soldier extends Agent {
 	private NdPoint moveToAngle(double angle) {
 		space.moveByVector(this , speed, angle , 0);	
 		NdPoint myPoint = space.getLocation(this);
+		
 		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());	
 		return myPoint;
 	}
@@ -203,22 +324,15 @@ public class Soldier extends Agent {
 		private static final long serialVersionUID = 1L;
 		@Override
 
-		public void action() {
+		public void action() {			
 			if(exitX==-1) {
-				
-				while(true){
-					NdPoint lastPoint = space.getLocation(myAgent);
-					double angle = moveRnd();
-					NdPoint myPoint = space.getLocation(myAgent);
-					if (canMove(grid,lastPoint,  myPoint)){
-						grid.moveTo(myAgent, (int)myPoint.getX(), (int)myPoint.getY());
-						break;
-					}else {
-						moveToAngle(angle+Math.PI);
-					}
-				}
+				moveRnd();
 			} else {
-				moveToPlace(exitX,exitY);
+				NdPoint myPoint = moveToPlace(exitX,exitY);
+				if(myPoint.getX()==exitX && myPoint.getY()==exitY) {
+					stage = State.IS_IN_EXIT;
+					myAgent.removeBehaviour(this);
+				}
 			}
 		}
 
@@ -227,6 +341,44 @@ public class Soldier extends Agent {
 			// TODO Auto-generated method stub
 			return false;
 		}
+	}
+	
+	private class ShareMap extends Behaviour {
+
+		private static final long serialVersionUID = 1L;
+		
+		private boolean[][] auxMyMap;
+		private int counter=0;
+		
+		@Override
+		public void action() {	
+			if(stage == State.IS_IN_EXIT) {
+				myAgent.removeBehaviour(this);
+			}
+			if(auxMyMap==null || compareArrays(auxMyMap,myMap)) {
+				transmitNewsToNearbySoldiers(myAgent.getAID()+"/"+counter+"/-/"+Arrays.deepToString(myMap),"shareMap");
+			}
+			
+		}
+
+		@Override
+		public boolean done() {
+			// TODO Auto-generated method stub
+			return false;
+		}
+	}
+	
+	public static Boolean compareArrays(boolean[][] array1, boolean[][] array2) {
+	    for (int i = 0; i < array1.length; i++) {
+
+	        for (int a = 0; a < array1[i].length; a++) {
+
+	            if (array2[i][a] != array1[i][a]) {
+		            return false;
+	            }
+	        }
+	    }
+	    return true;
 	}
 	
 	private void transmitNewsToNearbySoldiers(String content, String id) {
@@ -377,7 +529,7 @@ public class Soldier extends Agent {
 		private static final long serialVersionUID = 1L;
 
 		@Override
-		public void action() {
+		public void action() {			
 			GridPoint pt = grid.getLocation(myAgent);
 			
 			GridCellNgh<Exit> nghCreator = new GridCellNgh<Exit>(grid, pt, Exit.class, visionRadius, visionRadius);
@@ -406,7 +558,6 @@ public class Soldier extends Agent {
 		
 		@Override
 		public void action() {
-
 			if(exitX!=-1) {
 				GridPoint pt = grid.getLocation(myAgent);
 				GridCellNgh<Soldier> nghCreator = new GridCellNgh<Soldier>(grid, pt, Soldier.class, speakRadius, speakRadius);
@@ -450,7 +601,9 @@ public class Soldier extends Agent {
 						
 						break;
 					}
-				}				
+				}
+				if(stage == State.IS_IN_EXIT)
+					myAgent.removeBehaviour(this);
 			}			
 		}
 
@@ -462,13 +615,29 @@ public class Soldier extends Agent {
 		
 	}
 	
+	private void bloodfill(NdPoint point) {
+				
+	}
+	
+	private void buildMapFromString(String[] map){
+		for(int i=0;i<myMap.length;i++) {
+			for(int j=0;j<myMap[i].length;j++) {
+				if(!myMap[i][j] && Boolean.parseBoolean(map[j+i*myMap.length])) {
+					myMap[i][j]=true;
+				}
+			}
+		}
+	}
+	
 	private class MessageListener extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
 		private List<String> arrivals = new ArrayList<String>();
+		private List<String> maps = new ArrayList<String>();
 
 		@Override
 		public void action() {
-			
+			if(stage == State.IS_IN_EXIT)
+				myAgent.removeBehaviour(this);
 			MessageTemplate msgtemp = MessageTemplate.MatchConversationId("inform_exit");
 			ACLMessage reply = myAgent.receive(msgtemp);
 			
@@ -483,6 +652,24 @@ public class Soldier extends Agent {
 			}
 			
 			if(exitX==-1) {
+				
+				while(true) {
+					msgtemp = MessageTemplate.MatchConversationId("shareMap");
+					reply = myAgent.receive(msgtemp);
+					try {	
+						String message = reply.getContent();
+						String[] coords = message.split("/-/");
+						if(!maps.contains(coords[0])) {
+							maps.add(coords[0]);
+							String[] map = coords[1].replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("\\s", "").split(",");
+							buildMapFromString(map);	
+						}
+						
+					} catch (NullPointerException e) {
+						break;
+					}
+				}
+				
 				while(true) {
 					msgtemp = MessageTemplate.MatchConversationId("follow_me");
 					reply = myAgent.receive(msgtemp);
