@@ -2,7 +2,9 @@ package evacuacao;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
@@ -14,6 +16,7 @@ import repast.simphony.space.SpatialMath;
 import repast.simphony.space.continuous.ContinuousSpace;
 import repast.simphony.space.continuous.NdPoint;
 import repast.simphony.space.grid.Grid;
+import repast.simphony.space.grid.GridDimensions;
 import repast.simphony.space.grid.GridPoint;
 import sajas.core.AID;
 import repast.simphony.util.SimUtilities;
@@ -43,7 +46,7 @@ public class Soldier extends Agent {
 	
 	private int type_of_game;
 	private int MAPX = 50, MAPY=50;
-	private boolean[][] myMap= new boolean[MAPX+1][MAPY+1];
+	private boolean[][] myMap = new boolean[MAPX+1][MAPY+1];
 	
 	
 	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y, int vision_radius, int speak_radius, int type_of_game) {
@@ -739,4 +742,116 @@ public class Soldier extends Agent {
 			
 		}
 	}	
+
+	public ArrayList<GridPoint> shortestPath (NdPoint pt1) {
+		GridDimensions gridDim = grid.getDimensions();
+		int gridWidth = gridDim.getWidth();
+		//System.out.println("gridWidth: " + gridWidth);
+		int gridHeight = gridDim.getHeight();
+		//System.out.println("gridHeight: " + gridHeight);
+		int[][] visitedCells = new int[gridWidth][gridHeight];
+		for (int[] row: visitedCells)
+			Arrays.fill(row, Integer.MAX_VALUE);
+		LinkedList<GridPoint> queue = new LinkedList<GridPoint>();
+		
+		GridPoint orig = new GridPoint((int) posX, (int) posY);
+		//System.out.println("orig: " + orig);
+		GridPoint dest = new GridPoint((int) pt1.getX(), (int) pt1.getY());
+		//System.out.println("dest: " + dest);
+		visitedCells[orig.getX()][orig.getY()] = 0;
+		queue.add(orig);
+		//System.out.println("queue size: " + queue.size());
+		
+		for (boolean[] row: myMap)
+			Arrays.fill(row, true);
+		
+		boolean destReached = false; 
+		while (!destReached){
+			GridPoint current = queue.poll();
+			if (current == null){
+				System.out.println("queue is null");
+				return null;
+			}
+			else{
+				//System.out.println("queue is not null");
+			}
+			int currentValue = visitedCells[current.getX()][current.getY()];
+			
+			// get neighbours
+			ArrayList<GridPoint> neighbours = new ArrayList<GridPoint>();
+			if (current.getY() > 0) {
+				if (current.getX() > 0)
+					neighbours.add(new GridPoint(current.getX() - 1, current.getY() - 1));
+				neighbours.add(new GridPoint(current.getX(), current.getY() - 1));
+				if (current.getX() < gridWidth - 1)
+					neighbours.add(new GridPoint(current.getX() + 1, current.getY() - 1));
+			}
+			if (current.getX() > 0)
+				neighbours.add(new GridPoint(current.getX() - 1, current.getY()));
+			if (current.getX() < gridWidth - 1)
+				neighbours.add(new GridPoint(current.getX() + 1, current.getY()));
+			if (current.getY() < gridHeight - 1) {
+				if (current.getX() > 0)
+					neighbours.add(new GridPoint(current.getX() - 1, current.getY() + 1));
+				neighbours.add(new GridPoint(current.getX(), current.getY() + 1));
+				if (current.getX() < gridWidth - 1)
+					neighbours.add(new GridPoint(current.getX() + 1, current.getY() + 1));
+			}
+			
+			for (GridPoint neighbour : neighbours){
+				if (neighbour.equals(dest)){
+					destReached = true;
+					break;
+				}
+				if (myMap[neighbour.getX()][neighbour.getY()] &&
+						visitedCells[neighbour.getX()][neighbour.getY()] == Integer.MAX_VALUE &&
+						canMove(grid, new NdPoint(current.getX(), current.getY()), new NdPoint(neighbour.getX(), neighbour.getY()))){
+					queue.add(neighbour);
+					visitedCells[neighbour.getX()][neighbour.getY()] = currentValue + 1;
+				}
+			}			
+		}
+		
+		ArrayList<GridPoint> path = new ArrayList<GridPoint>();
+		if (destReached){
+			GridPoint current = dest;
+			while (true){
+				// get neighbours
+				ArrayList<GridPoint> neighbours = new ArrayList<GridPoint>();
+				if (current.getY() > 0) {
+					if (current.getX() > 0)
+						neighbours.add(new GridPoint(current.getX() - 1, current.getY() - 1));
+					neighbours.add(new GridPoint(current.getX(), current.getY() - 1));
+					if (current.getX() < gridWidth)
+						neighbours.add(new GridPoint(current.getX() + 1, current.getY() - 1));
+				}
+				if (current.getX() > 0)
+					neighbours.add(new GridPoint(current.getX() - 1, current.getY()));
+				if (current.getX() < gridWidth)
+					neighbours.add(new GridPoint(current.getX() + 1, current.getY()));
+				if (current.getY() < gridHeight) {
+					if (current.getX() > 0)
+						neighbours.add(new GridPoint(current.getX() - 1, current.getY() + 1));
+					neighbours.add(new GridPoint(current.getX(), current.getY() + 1));
+					if (current.getX() < gridWidth)
+						neighbours.add(new GridPoint(current.getX() + 1, current.getY() + 1));
+				}
+				
+				int minValue = Integer.MAX_VALUE;
+				GridPoint minNeighbour = null;
+				for (GridPoint neighbour : neighbours){
+					int value = visitedCells[neighbour.getX()][neighbour.getY()];
+					if (value < minValue){
+						minValue = value;
+						minNeighbour = neighbour;
+					}					
+				}
+				path.add(0, minNeighbour);
+				if (minValue > 1)
+					current = minNeighbour;
+				else break;
+			}
+		}
+		return path;		
+	}
 }
