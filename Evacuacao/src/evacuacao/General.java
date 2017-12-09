@@ -25,26 +25,26 @@ import sajas.core.behaviours.SimpleBehaviour;
 import sajas.core.behaviours.TickerBehaviour;
 import sajas.domain.DFService;
 
-public class General extends Agent {
-	private ContinuousSpace<Object> space;
-	private Grid<Object> grid;
+public class General extends MovableAgent {
+
 	private double posx, posy, investigateX, investigateY ;
-	private int visionRadius, speakRadius;
 	private List<AID> soldiers;
 	private double mapx, mapy;
+	private int direction = 0;
 	
 	private State stage=State.MOVING;
 	
 	//exit
 	private int exitx = -1, exity = -1;
 	
-	private double speed;
+	private static double speed=1;
 	
 	private int type_of_game;
 	
 	private AID[] sellerAgents;
 	
 	public General(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y, int vision_radius, int speak_radius) {
+		super(space,grid,speed,vision_radius,speak_radius);
 		this.space = space;
 		this.grid = grid;
 		this.posx =x;
@@ -55,6 +55,7 @@ public class General extends Agent {
 	};
 	
 	public General(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y, double investigateX, double investigateY, List<AID> list, double mapx, double mapy, int vision_radius, int speak_radius) {
+		super(space,grid,speed,vision_radius,speak_radius);
 		this.space = space;
 		this.grid = grid;
 		this.posx =x;
@@ -68,62 +69,8 @@ public class General extends Agent {
 		this.mapy=mapy;
 		type_of_game=2;
 	};
-
-private double moveRnd() {
-		
-		int nr_tries= 0;
-		NdPoint myPoint;
-		double angle;
-		while(true){
-			NdPoint lastPoint = space.getLocation(this);
-			int direction = RandomHelper.nextIntFromTo (0, 7);
-			angle= direction*45*Math.PI/180;
-			space.moveByVector(this , speed, angle , 0);
-			myPoint = space.getLocation(this);
-			
-			nr_tries++;
-			if (canMove(grid,lastPoint,  myPoint)){
-				grid.moveTo(this, (int)myPoint.getX(), (int)myPoint.getY());
-				break;
-			}else {
-				moveToAngle(angle+Math.PI);
-			}
-			
-			if(nr_tries==10)
-				break;
-		}
-		
-		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());
-		return angle;
-	}
-	
-	private NdPoint moveToPlace(double x, double y) {
-		NdPoint  otherPoint = new  NdPoint(x,y);
-		NdPoint myPoint = space.getLocation(this);
-		double distance = Math.sqrt(Math.pow(myPoint.getX()-x,2) + Math.pow(myPoint.getY()-y,2));
-		double  angle = SpatialMath.calcAngleFor2DMovement(space ,myPoint , otherPoint );
-		if (distance >1)
-			space.moveByVector(this , speed, angle , 0);
-		else {
-			space.moveByVector(this , distance, angle , 0);
-		}
-		myPoint = space.getLocation(this);
-		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());
-		
-		return myPoint;
-	}
-	
-	private NdPoint moveToAngle(double angle) {
-		space.moveByVector(this , speed, angle , 0);	
-		NdPoint myPoint = space.getLocation(this);
-		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());	
-		return myPoint;
-	}
 	
 	protected void setup() {
-		
-		speed = 1;
-
 		space.moveTo(this, posx, posy);
 		grid.moveTo(this, (int) posx, (int) posy);
 
@@ -179,35 +126,13 @@ private double moveRnd() {
 		}
 	}
 	
-	public static boolean canMove (Grid<Object> grid, NdPoint pt1, NdPoint pt2) {
-		GridPoint pt = new GridPoint( (int) pt1.getX(), (int) pt1.getY());
-		GridCellNgh<WallChunk> nghCreator = new GridCellNgh<WallChunk>(grid, pt, WallChunk.class, 1, 1);
-		List<GridCell<WallChunk>> gridCells = nghCreator.getNeighborhood(true);
-		List<Wall> walls = new ArrayList<Wall>();
-		for (GridCell<WallChunk> cell : gridCells ) {
-			if (cell.size() > 0) {
-				for (WallChunk wc : cell.items() ) {
-					Wall wall = wc.getWall();
-					if (walls.contains(wall))
-						continue;
-					walls.add(wall);
-					if (Geometry.doLinesIntersect(pt1.getX(), pt1.getY(), pt2.getX(), pt2.getY(),
-							(double)wall.getX1(), (double)wall.getY1(),
-							(double)wall.getX2(), (double)wall.getY2() )){
-						return false;											
-					}
-				}
-			}
-		}
-		return true;
-	}
-	
 	private class GeneralRandomMovement extends Behaviour {
 
 		private static final long serialVersionUID = 1L;
 
 		@Override
-		public void action() {			
+		public void action() {		
+			System.out.println("tou a chamar o random do general");
 			if(exitx==-1) {
 				moveRnd();
 			} else {
@@ -279,7 +204,7 @@ private double moveRnd() {
 			}
 		}
 
-		System.out.println("vou partilhar a saída " + this.getName() + " " + counter);
+		
 		message_inform.setContent(content);
 		message_inform.setConversationId(id);
 		message_inform.setReplyWith(id + " " + System.currentTimeMillis());
@@ -370,17 +295,32 @@ private double moveRnd() {
 
 					try {
 						String message = reply.getContent();
+						System.out.println("recebi arrived");
 						if(!arrived.contains(message)) {
 							for(int i=0;i<soldiers.size();i++) {
 								
 								if(soldiers.get(i).toString().equals(message)) {
 									arrived.add(message);
 									if(arrived.size()==soldiers.size()) {
-										
-										investigateX+=speed;
-										investigateX = investigateX%mapy;
-										arrived.clear();
-										addBehaviour(new TellSoldiersArea());
+										System.out.println(investigateX+speed+visionRadius);
+										if(((int)(investigateX+speed+visionRadius)<=mapx && direction==0) || (direction==1 && (int)(investigateX-speed-visionRadius)>=0)) {
+											if(direction==0)
+												investigateX+=speed;
+											else investigateX-=speed;
+											investigateX = investigateX%mapy;
+											arrived.clear();
+											addBehaviour(new TellSoldiersArea());
+										}else {
+											if(direction==1)
+												direction=0;
+											else direction=1;
+											if(direction==0)
+												investigateX+=speed;
+											else investigateX-=speed;
+											investigateX = investigateX%mapy;
+											arrived.clear();
+											addBehaviour(new TellSoldiersArea());
+										}
 									}
 										
 									break;

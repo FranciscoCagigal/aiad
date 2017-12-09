@@ -22,12 +22,9 @@ import sajas.core.behaviours.Behaviour;
 import sajas.core.behaviours.CyclicBehaviour;
 import sajas.core.behaviours.OneShotBehaviour;
 
-public class Soldier extends Agent {
+public class Soldier extends MovableAgent {
 	
-	private ContinuousSpace<Object> space;
-	private Grid<Object> grid;
 	private double posX, posY;
-	private int visionRadius, speakRadius;
 	
 	//exit
 	private int exitX = -1, exitY = -1;
@@ -39,14 +36,14 @@ public class Soldier extends Agent {
 	
 	private Boolean canDelete = false;
 	
-	private double speed;
+	private static double speed=1;
 	
 	private int type_of_game;
 	private int MAPX = 50, MAPY=50;
-	private boolean[][] myMap= new boolean[MAPX+1][MAPY+1];
 	
 	
 	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y, int vision_radius, int speak_radius, int type_of_game) {
+		super(space,grid,speed,vision_radius,speak_radius);
 		this.space = space;
 		this.grid = grid;
 		this.posX =x;
@@ -56,8 +53,7 @@ public class Soldier extends Agent {
 		this.type_of_game = type_of_game;
 	};
 	
-	protected void setup() {		
-		speed = 1;
+	protected void setup() {
 
 		space.moveTo(this, posX, posY);
 		grid.moveTo(this, (int) posX, (int) posY);
@@ -73,154 +69,14 @@ public class Soldier extends Agent {
 		else addBehaviour(new SoldierSuperCoordinatedRandomMovement());
 	}
 	
-	private int chooseRandom(ArrayList<NdPoint> positions ,ArrayList<Integer> array) {
-		NdPoint myPoint = space.getLocation(this);
-		while(true) {
-			if (positions.isEmpty())
-				return -1;
-			NdPoint position =  positions.get(RandomHelper.nextIntFromTo(0, positions.size()-1));
-			int angle = (int) ((180/Math.PI)*SpatialMath.calcAngleFor2DMovement(space ,myPoint , position ));
-			if(angle<0)
-				angle+=360;
-			int int_angle = angle / 45;
-			if(myPoint.getX()>48 )
-				System.out.println("angle " + position + " " + angle + " " + Arrays.deepToString(array.toArray()));
-			if(array.contains(int_angle)) {
-				if(myPoint.getX()>48 )
-					System.out.println("int_angle " + int_angle);
-				return int_angle;
-			}else {
-				positions.remove(position);
-			}
-		}
-		
-	}
 	
-	private ArrayList<Integer> getPossibleDirections() {
-		ArrayList<Integer> result = new ArrayList<Integer>();
-		NdPoint myPoint = space.getLocation(this);
-		for(int i=0;i<7;i++) {
-			NdPoint nextPosition = new NdPoint(myPoint.getX()+speed*Math.cos(i*45*Math.PI/180),myPoint.getY()+speed*Math.sin(45*i*Math.PI/180));
-			if(myPoint.getX()+speed*Math.cos(i*45*Math.PI/180)<=MAPX && myPoint.getY()+speed*Math.sin(45*i*Math.PI/180)<=MAPY && myPoint.getY()+speed*Math.sin(45*i*Math.PI/180)>=0 && myPoint.getX()+speed*Math.cos(i*45*Math.PI/180)>=0 && canMove(grid,myPoint,  nextPosition)) {
-				result.add(i);
-			}
-				
-		}		
-		return result;
-	}
 	
-	private ArrayList<NdPoint> getPositionsNotVisited(int radius){
-		ArrayList<NdPoint> result = new ArrayList<NdPoint> ();
-		NdPoint myPoint = space.getLocation(this);
-		int x = (int) myPoint.getX();
-		int y = (int) myPoint.getY();
-		System.out.println("começo " + this.getAID() + " " + myPoint + " " + myMap[44][44]);
-		
-		for(int i =-radius; i<= radius;i++) {
-			for(int j =-radius; j<= radius;j++) {
-				if(myPoint.getX()>48 && y+j>=0 && x+i<=MAPX && y+j<MAPY)
-				System.out.println(new NdPoint(x+i,y+j) + " " + myMap[x+i][y+j]);
-				if(x+i>=0 && x+i<=MAPX && y+j>=0 && y+j<MAPY && !myMap[x+i][y+j]) {
-					if(myPoint.getX()>48)
-					System.out.println("entrei");
-					result.add(new NdPoint(x+i,y+j));
-				}
-			}
-		}
-		return result;
-	}
 	
-	private void moveRnd() {
-		
-		int nr_tries= 0;
-		NdPoint myPoint;
-		double angle;
-		int radius = 1;
-		ArrayList<NdPoint> positions = new ArrayList<NdPoint> ();
-		while(true){
-			NdPoint lastPoint = space.getLocation(this);
-			if(positions.isEmpty())
-				positions = getPositionsNotVisited(radius);
+	
+	
 
-			int direction = chooseRandom(positions,getPossibleDirections());
-			if(direction!=-1) {
-				angle= direction*45*Math.PI/180;
-				space.moveByVector(this , speed, angle , 0);
-				myPoint = space.getLocation(this);
-				
-				
-				if (canMove(grid,lastPoint,  myPoint)){
-					grid.moveTo(this, (int)myPoint.getX(), (int)myPoint.getY());
-					break;
-				}else {
-					moveToAngle(angle+Math.PI);
-				}
-			}else {
-				positions.clear();
-				radius++;
-			}
-			nr_tries++;
-			if(nr_tries==50)
-				break;
-		}
-		updateMap();
-	}
 	
-	private void updateMap() {
-		NdPoint myPoint = space.getLocation(this);
-		System.out.println("minha posicao " + myPoint);
-		for(int i=0;i<=visionRadius;i++) {
-			int height = (int)myPoint.getY () + i;
-			if(height>=MAPY)
-				height=MAPY;
-			myMap[(int) Math.round(myPoint.getX())][height] = true;
-			System.out.println(new NdPoint(Math.round(myPoint.getX()),height));
-			height = (int)myPoint.getY () - i;
-			if(height<0)
-				height=0;
-			myMap[(int) Math.round(myPoint.getX())][height] = true;
-			System.out.println(new NdPoint(Math.round(myPoint.getX()),height));
-			int width = (int)myPoint.getX () + i;
-			if(width>=MAPX)
-				width=MAPX;
-			myMap[width][(int) Math.round(myPoint.getY())] = true;
-			System.out.println(new NdPoint(width,Math.round(myPoint.getY())));
-			width = (int)myPoint.getX () - i;
-			if(width<0)
-				width=0;
-			myMap[width][(int) Math.round(myPoint.getY())] = true;
-			System.out.println(new NdPoint(width,Math.round(myPoint.getY())));
-			
-		}
-		
-	}
 	
-	private NdPoint moveToPlace(double x, double y) {
-		NdPoint  otherPoint = new  NdPoint(x,y);
-		NdPoint lastPoint = space.getLocation(this);
-		double distance = Math.sqrt(Math.pow(lastPoint.getX()-x,2) + Math.pow(lastPoint.getY()-y,2));
-		double  angle = SpatialMath.calcAngleFor2DMovement(space ,lastPoint , otherPoint );
-		if (distance >speed)
-			space.moveByVector(this , speed, angle , 0);
-		else {
-			space.moveByVector(this , distance, angle , 0);
-		}
-		NdPoint myPoint = space.getLocation(this);
-		if(canMove(grid,lastPoint,  myPoint)) {
-			
-		}
-		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());
-		
-		return myPoint;
-	}
-	
-	private NdPoint moveToAngle(double angle) {
-		space.moveByVector(this , speed, angle , 0);	
-		NdPoint myPoint = space.getLocation(this);
-		
-		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());	
-		return myPoint;
-	}
 	
 	private boolean checkForCapitans(int radius) {
 		GridPoint pt = grid.getLocation(this);
@@ -241,28 +97,7 @@ public class Soldier extends Agent {
 		return false;		
 	}
 	
-	public static boolean canMove (Grid<Object> grid, NdPoint pt1, NdPoint pt2) {
-		GridPoint pt = new GridPoint( (int) pt1.getX(), (int) pt1.getY());
-		GridCellNgh<WallChunk> nghCreator = new GridCellNgh<WallChunk>(grid, pt, WallChunk.class, 1, 1);
-		List<GridCell<WallChunk>> gridCells = nghCreator.getNeighborhood(true);
-		List<Wall> walls = new ArrayList<Wall>();
-		for (GridCell<WallChunk> cell : gridCells ) {
-			if (cell.size() > 0) {
-				for (WallChunk wc : cell.items() ) {
-					Wall wall = wc.getWall();
-					if (walls.contains(wall))
-						continue;
-					walls.add(wall);
-					if (Geometry.doLinesIntersect(pt1.getX(), pt1.getY(), pt2.getX(), pt2.getY(),
-							(double)wall.getX1(), (double)wall.getY1(),
-							(double)wall.getX2(), (double)wall.getY2() )){
-						return false;											
-					}
-				}
-			}
-		}
-		return true;
-	}
+	
 	
 	private boolean checkForSpecificCapitan(int radius, jade.core.AID myGeneral) {
 		GridPoint pt = grid.getLocation(this);
@@ -294,11 +129,14 @@ public class Soldier extends Agent {
 				myPoint = moveToPlace(generalPlaceX,generalPlaceY);
 				if(myPoint.getX()==generalPlaceX && myPoint.getY()==generalPlaceY) {
 					stage=State.FINISHED_MOVING;
+					System.out.println("cheguei a mh posicao");
 					if(checkForSpecificCapitan(speakRadius,myGeneral)) {
+						System.out.println("encontrei o meu general");
 						myAgent.addBehaviour(new WarnGeneralArrival());
 					}
 						
 					else {
+						System.out.println("nao encontrei o meu general");
 						transmitNewsToNearbySoldiers(myAgent.getAID().toString()+"/-/"+myGeneral.toString(),"transmit_arrival");
 					}
 				}
@@ -410,7 +248,7 @@ public class Soldier extends Agent {
 		@Override
 		public void action() {
 			ACLMessage message_inform = new ACLMessage(ACLMessage.INFORM);
-			
+			System.out.println("vou informar o general");
 			message_inform.addReceiver(myGeneral);
 			message_inform.setContent(myAgent.getAID().toString());
 			message_inform.setConversationId("arrived");
