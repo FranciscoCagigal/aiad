@@ -207,19 +207,19 @@ public class MovableAgent extends Agent{
 		LinkedList<GridPoint> queue = new LinkedList<GridPoint>();
 		
 		NdPoint origPrecise = space.getLocation(this);
-		//System.out.println("origPrecise: " + origPrecise);
+		System.out.println("origPrecise: " + origPrecise);
 		GridPoint orig = grid.getLocation(this);		
-		//System.out.println("orig: " + orig);
+		System.out.println("orig: " + orig);
 		double dx = origPrecise.getX() - orig.getX(), dy = origPrecise.getY() - orig.getY();
-		//System.out.println("dx, dy: " + dx + " " + dy);
+		System.out.println("dx, dy: " + dx + " " + dy);
 		GridPoint dest = new GridPoint((int) pt1.getX(), (int) pt1.getY());
-		//System.out.println("dest: " + dest);
+		System.out.println("dest: " + dest);
 		cellWeights[orig.getX()][orig.getY()] = 0;
 		queue.add(orig);
 		//System.out.println("queue size: " + queue.size());
 		
-		for (boolean[] row: myMap)
-			Arrays.fill(row, true);
+		//for (boolean[] row: myMap)
+		//	Arrays.fill(row, true);
 		
 		/* Find cell weights */
 		boolean destReached = false; 
@@ -254,7 +254,6 @@ public class MovableAgent extends Agent{
 					neighbours.add(new GridPoint(current.getX() + 1, current.getY() + 1));
 			}
 			
-			//System.out.println("neighbours size: " + neighbours.size());
 			for (GridPoint neighbour : neighbours){
 
 				if ((myMap[neighbour.getX()][neighbour.getY()] && cellWeights[neighbour.getX()][neighbour.getY()] == Integer.MAX_VALUE &&
@@ -266,7 +265,7 @@ public class MovableAgent extends Agent{
 					
 					if (neighbour.equals(dest)){
 						destReached = true;
-						//System.out.println("destReached");
+						System.out.println("destReached");
 						break;
 					}
 				}
@@ -298,6 +297,7 @@ public class MovableAgent extends Agent{
 					if (current.getX() < gridWidth)
 						neighbours.add(new GridPoint(current.getX() + 1, current.getY() + 1));
 				}
+				//System.out.println("neighbours size: " + neighbours.size());
 				
 				double minValue = Integer.MAX_VALUE;
 				GridPoint minNeighbour = null;
@@ -308,7 +308,11 @@ public class MovableAgent extends Agent{
 					if (value < minValue && canMove(grid, new NdPoint(current.getX() + dx, current.getY() + dy), new NdPoint(neighbour.getX() + dx, neighbour.getY() + dy))){
 						minValue = value;
 						minNeighbour = neighbour;
-					}					
+					}
+					if (greedy && value < minValue && (!myMap[current.getX()][current.getY()] || !myMap[neighbour.getX()][neighbour.getY()])){
+						minValue = value;
+						minNeighbour = neighbour;
+					}
 				}
 				path.add(0, minNeighbour);
 				if (minValue > 1)

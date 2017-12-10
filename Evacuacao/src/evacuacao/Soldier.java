@@ -55,7 +55,10 @@ public class Soldier extends MovableAgent {
 		space.moveTo(this, posX, posY);
 		grid.moveTo(this, (int) posX, (int) posY);
 
-		System.out.println(shortestPath (new NdPoint(2,0.5), true));
+		//updateMap();
+		myMap[0][0] = true;
+		myMap[1][0] = true;
+		System.out.println(shortestPath (new NdPoint(10,0.5), true));
 		/*addBehaviour(new SearchForExit());
 		addBehaviour(new SoldierMessages());
 		addBehaviour(new MessageListener());

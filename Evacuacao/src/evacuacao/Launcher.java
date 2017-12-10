@@ -141,5 +141,6 @@ public class Launcher extends RepastSLauncher {
 		new Wall(context, space, grid, 12, 5, 20, 5);
 		
 		new Wall(context, space, grid, 1, 1, 1, 0);
+		new Wall(context, space, grid, 8, 1, 8, 0);
 	}	
 }
