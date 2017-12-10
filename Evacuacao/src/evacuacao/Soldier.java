@@ -55,7 +55,8 @@ public class Soldier extends MovableAgent {
 		space.moveTo(this, posX, posY);
 		grid.moveTo(this, (int) posX, (int) posY);
 
-		addBehaviour(new SearchForExit());
+		System.out.println(shortestPath (new NdPoint(2,0.5), true));
+		/*addBehaviour(new SearchForExit());
 		addBehaviour(new SoldierMessages());
 		addBehaviour(new MessageListener());
 	
@@ -63,7 +64,7 @@ public class Soldier extends MovableAgent {
 			addBehaviour(new SoldierRandomMovement());
 		else if(type_of_game==1) 
 			addBehaviour(new SoldierRandomCoordenatedMovement());
-		else addBehaviour(new SoldierSuperCoordinatedRandomMovement());
+		else addBehaviour(new SoldierSuperCoordinatedRandomMovement());*/
 	}
 	
 	
