@@ -51,15 +51,19 @@ public class Soldier extends MovableAgent {
 	};
 	
 	protected void setup() {
-
 		space.moveTo(this, posX, posY);
 		grid.moveTo(this, (int) posX, (int) posY);
+		updateMap();
 
-		//updateMap();
+		/*
 		myMap[0][0] = true;
+		myMap[0][1] = true;
 		myMap[1][0] = true;
-		System.out.println(shortestPath (new NdPoint(10,0.5), true));
-		/*addBehaviour(new SearchForExit());
+		myMap[1][1] = true;*/
+		//System.out.println(shortestPath (new NdPoint(6,2), true));
+		
+		
+		addBehaviour(new SearchForExit());
 		addBehaviour(new SoldierMessages());
 		addBehaviour(new MessageListener());
 	
@@ -67,12 +71,8 @@ public class Soldier extends MovableAgent {
 			addBehaviour(new SoldierRandomMovement());
 		else if(type_of_game==1) 
 			addBehaviour(new SoldierRandomCoordenatedMovement());
-		else addBehaviour(new SoldierSuperCoordinatedRandomMovement());*/
+		else addBehaviour(new SoldierSuperCoordinatedRandomMovement());
 	}
-	
-	
-	
-	
 	
 	
 
@@ -97,7 +97,6 @@ public class Soldier extends MovableAgent {
 		}
 		return false;		
 	}
-	
 	
 	
 	private boolean checkForSpecificCapitan(int radius, jade.core.AID myGeneral) {
@@ -155,8 +154,7 @@ public class Soldier extends MovableAgent {
 			return false;
 		}
 	}
-	
-	
+		
 	
 	private class SoldierRandomMovement extends Behaviour {
 
@@ -165,7 +163,7 @@ public class Soldier extends MovableAgent {
 
 		public void action() {			
 			if(exitX==-1) {
-				moveRnd();
+				moveRandom();
 			} else {
 				NdPoint myPoint = moveToPlace(exitX,exitY);
 				if(myPoint.getX()==exitX && myPoint.getY()==exitY) {
@@ -452,10 +450,6 @@ public class Soldier extends MovableAgent {
 			return false;
 		}
 		
-	}
-	
-	private void bloodfill(NdPoint point) {
-				
 	}
 	
 	private void buildMapFromString(String[] map){
