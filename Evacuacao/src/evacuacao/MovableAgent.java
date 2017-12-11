@@ -78,9 +78,9 @@ public class MovableAgent extends Agent{
 		return true;
 	}
 
-	void moveRandom() {			
+	void moveRandom() {
 		if (path == null || path.isEmpty()) {
-			System.out.println("getting new path...");
+			//System.out.println("getting new path...");
 			
 			int tries = 0;
 			int radius = 1;	
@@ -97,7 +97,7 @@ public class MovableAgent extends Agent{
 				} else {
 					while ((path == null || path.isEmpty()) && !positions.isEmpty()){
 						NdPoint position = positions.remove(RandomHelper.nextIntFromTo(0, positions.size()-1));
-						System.out.println("new random destination: " + position);
+						//System.out.println("new random destination: " + position);
 						path = shortestPath(position, true);
 						//System.out.println("path: " + path);
 					}
@@ -106,7 +106,11 @@ public class MovableAgent extends Agent{
 				}
 			}
 		}
-		System.out.println("path: " + path);
+		//System.out.println("path: " + path);
+		//System.out.print("[");
+		//for (GridPoint gp : path)
+		//	System.out.print(myMap[gp.getX()][gp.getY()] + " ");
+		//System.out.println("]");
 		
 		GridPoint currentPos = grid.getLocation(this);
 		GridPoint nextPos = path.get(0);
@@ -130,7 +134,7 @@ public class MovableAgent extends Agent{
 			else
 				angle = 180 *Math.PI/180;
 		}
-		System.out.println("angle: " + angle * 180/Math.PI);
+		//System.out.println("angle: " + angle * 180/Math.PI);
 		
 		NdPoint currentPoint = space.getLocation(this);
 		space.moveByVector(this, step, angle, 0);
@@ -144,7 +148,7 @@ public class MovableAgent extends Agent{
 			// revert position
 			space.moveTo(this, currentPoint.getX(), currentPoint.getY());
 			path = null;
-			System.out.println("cant move: " + currentPoint + " to " + nextPoint);
+			//System.out.println("can't move from " + currentPoint + " to " + nextPoint);
 		}
 		updateMap();
 	}
@@ -278,7 +282,7 @@ public class MovableAgent extends Agent{
 		int gridHeight = gridDim.getHeight() + 1;
 		//System.out.println("gridHeight: " + gridHeight);
 		int[][] cellWeights = new int[gridWidth][gridHeight];
-		for (int[] row: cellWeights)
+		for (int[] row : cellWeights)
 			Arrays.fill(row, Integer.MAX_VALUE);
 		LinkedList<GridPoint> queue = new LinkedList<GridPoint>();
 		
@@ -294,12 +298,9 @@ public class MovableAgent extends Agent{
 		queue.add(orig);
 		//System.out.println("queue size: " + queue.size());
 		
-		//for (boolean[] row: myMap)
-		//	Arrays.fill(row, true);
-		
 		/* Find cell weights */
 		boolean destReached = false; 
-		while (!destReached){
+		while (!destReached) {
 			GridPoint current = queue.poll();
 			if (current == null){
 				System.out.println("queue is null");
@@ -330,8 +331,12 @@ public class MovableAgent extends Agent{
 					neighbours.add(new GridPoint(current.getX() + 1, current.getY() + 1));
 			}
 			
-			for (GridPoint neighbour : neighbours){
-
+			for (GridPoint neighbour : neighbours) {
+				//System.out.println("myMap[" + neighbour.getX() + "][" + neighbour.getY() + "]: " + myMap[neighbour.getX()][neighbour.getY()]);
+				//System.out.println("cellWeights[" + neighbour.getX() + "][" + neighbour.getY() + "]: " + cellWeights[neighbour.getX()][neighbour.getY()]);
+				//System.out.println("canMove([" + (current.getX() + dx) + "," + (current.getY() + dy) + "][" + (neighbour.getX() + dx) + "," + (neighbour.getY() + dy) + "]): "
+				//+ canMove(grid, new NdPoint(current.getX() + dx, current.getY() + dy), new NdPoint(neighbour.getX() + dx, neighbour.getY() + dy)));
+				
 				if ((myMap[neighbour.getX()][neighbour.getY()] && cellWeights[neighbour.getX()][neighbour.getY()] == Integer.MAX_VALUE &&
 						canMove(grid, new NdPoint(current.getX() + dx, current.getY() + dy), new NdPoint(neighbour.getX() + dx, neighbour.getY() + dy))) ||
 						(greedy && cellWeights[neighbour.getX()][neighbour.getY()] == Integer.MAX_VALUE && !myMap[neighbour.getX()][neighbour.getY()]))	{
@@ -390,7 +395,7 @@ public class MovableAgent extends Agent{
 						minNeighbour = neighbour;
 					}
 				}				
-				if (minValue > 1){
+				if (minValue >= 1){
 					path.add(0, minNeighbour);
 					current = minNeighbour;
 				} else {

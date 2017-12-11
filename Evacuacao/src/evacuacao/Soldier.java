@@ -54,14 +54,15 @@ public class Soldier extends MovableAgent {
 		space.moveTo(this, posX, posY);
 		grid.moveTo(this, (int) posX, (int) posY);
 		updateMap();
-
-		/*
-		myMap[0][0] = true;
-		myMap[0][1] = true;
-		myMap[1][0] = true;
-		myMap[1][1] = true;*/
-		//System.out.println(shortestPath (new NdPoint(6,2), true));
 		
+		//myMap[0][0] = true;
+		//myMap[0][1] = true;
+		//myMap[1][0] = true;
+		//myMap[1][1] = true;
+		/*space.moveTo(this, 11.88, 5.19);
+		grid.moveTo(this, 11, 5);
+		updateMap();
+		System.out.println(shortestPath (new NdPoint(21.0, 15.0), true));*/		
 		
 		addBehaviour(new SearchForExit());
 		addBehaviour(new SoldierMessages());
@@ -73,9 +74,6 @@ public class Soldier extends MovableAgent {
 			addBehaviour(new SoldierRandomCoordenatedMovement());
 		else addBehaviour(new SoldierSuperCoordinatedRandomMovement());
 	}
-	
-	
-
 	
 	
 	
