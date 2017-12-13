@@ -120,7 +120,8 @@ public class MovableAgent extends Agent{
 	}
 	
 	void abolishWall() {
-		wallToBeAbolished.destroyBerlimWall();
+		if(wallToBeAbolished!=null)
+			wallToBeAbolished.destroyBerlimWall();
 	}
 	
 	boolean canAbollish (Grid<Object> grid, NdPoint pt1, NdPoint pt2) {

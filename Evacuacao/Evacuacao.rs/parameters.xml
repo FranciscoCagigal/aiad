@@ -19,7 +19,7 @@
 									
 		/>
 				<parameter name="TYPE_OF_GAME" displayName="TYPE_OF_GAME" type="int" 
-						defaultValue="0" 
+						defaultValue="2" 
 						isReadOnly="false" 
 						converter="repast.simphony.parameter.StringConverterFactory$IntConverter"
 									
