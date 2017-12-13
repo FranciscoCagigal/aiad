@@ -52,21 +52,6 @@ public class Launcher extends RepastSLauncher {
 		mainContainer = rt.createMainContainer(p1);
 
 		launchAgents();
-		
-		/*try {
-			Soldier s = new Soldier(space, grid, 0, 0, 1, 1, 1);
-			mainContainer.acceptNewAgent("Soldier" + 999, s).start();
-			space.moveTo(s, 0, 0);
-			grid.moveTo(s, 0, 0);
-			
-			ArrayList<GridPoint> path = s.shortestPath(new NdPoint(10,0.5), true);
-			for (GridPoint p : path){
-				System.out.println(p);
-			}
-		} catch (StaleProxyException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}*/
 	}
 	
 	private void launchAgents() {
@@ -134,11 +119,18 @@ public class Launcher extends RepastSLauncher {
 		NdPoint pt = space.getLocation(exit);
 		grid.moveTo(exit, (int) pt.getX(), (int) pt.getY());
 		
+		//true se é movível
 		new Wall(context, space, grid, 5, 5, 5, 15,false);
 		//new Wall(context, space, grid, 5.5, 15, 20, 15);
 		new Wall(context, space, grid, 20, 5, 20, 15,false);
 		//new Wall(context, space, grid, 5.5, 5, 8, 5);
 		//new Wall(context, space, grid, 12, 5, 20, 5);
+
+		/*new Wall(context, space, grid, 4, 5, 4, 15);
+		new Wall(context, space, grid, 4, 15, 20, 15);
+		new Wall(context, space, grid, 20, 5, 20, 15);
+		new Wall(context, space, grid, 4, 5, 8, 5);
+		new Wall(context, space, grid, 12, 5, 20, 5);*/
 		
 		new Wall(context, space, grid, 1, 5, 1, 0,true);
 		new Wall(context, space, grid, 8, 1, 8, 0,false);

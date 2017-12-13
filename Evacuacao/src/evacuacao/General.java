@@ -205,8 +205,6 @@ public class General extends MovableAgent {
 						}
 					}
 				}
-
-				System.out.println("help me " + myAgent.getLocalName());
                 
                 if(counter>0) {
                 	stage=State.WAITING_FOR_ANSWER;
@@ -571,6 +569,7 @@ public class General extends MovableAgent {
 
         @Override
         public void handleAllResponses(Vector proposes, Vector responses) {
+        	System.out.println("entrei no general");
             double minCost = Double.MAX_VALUE;
             ACLMessage minCostProposal = null;
             for (Object proposeObj : proposes) {
@@ -653,10 +652,8 @@ public class General extends MovableAgent {
         	
             ACLMessage response = message.createReply();
             response.setPerformative(ACLMessage.PROPOSE);
-            System.out.println("recebi esta mensagem " + message.getContent() + " " + myAgent.getAID()+ " " + message.getConversationId() + " " + id);
             String[] coordinates = message.getContent().split("-");
             double cost = Math.abs(Double.parseDouble(coordinates[0])-space.getLocation(myAgent).getX())+ Math.abs(Double.parseDouble(coordinates[1])-space.getLocation(myAgent).getY());
-            System.out.println("mandei cost " + myAgent.getAID());
             response.setContent("" + cost);
             
             stage=State.WAITING_FOR_DECISION;
@@ -666,13 +663,14 @@ public class General extends MovableAgent {
 
         @Override
         public ACLMessage handleAcceptProposal(ACLMessage cfp, ACLMessage propose, ACLMessage accept) {
-           	System.out.println("recebi confirmacao " + myAgent.getAID());
-            ACLMessage response = accept.createReply();
+           ACLMessage response = accept.createReply();
             String[] coordinates = accept.getContent().split("-");
             helpX=Double.parseDouble(coordinates[0]);
             helpY=Double.parseDouble(coordinates[1]);
             stage=State.HELPING;
             response.setPerformative(ACLMessage.INFORM);
+
+			System.out.println("recebi accept general");
             return response;
         }
         

@@ -66,11 +66,10 @@ public class Soldier extends MovableAgent {
 	};
 	
 	protected void setup() {
-
 		space.moveTo(this, posX, posY);
 		grid.moveTo(this, (int) posX, (int) posY);
+
 		
-		addBehaviour(new ShareMap());
 		addBehaviour(new SearchForExit());
 		addBehaviour(new SoldierMessages());
 		addBehaviour(new MessageListener());
@@ -81,9 +80,31 @@ public class Soldier extends MovableAgent {
 		else if(type_of_game==1) 
 			addBehaviour(new SoldierRandomCoordenatedMovement());
 		else addBehaviour(new SoldierSuperCoordinatedRandomMovement());
+
 		
 		id=this.getLocalName().replaceAll("\\D+","");
-	}	
+	}
+	
+	
+	
+	private boolean checkForCapitans(int radius) {
+		GridPoint pt = grid.getLocation(this);
+		GridCellNgh<General> nghCreatorGeneral = new GridCellNgh<General>(grid, pt, General.class, radius, radius);
+		List<GridCell<General>> gridCellsGeneral = nghCreatorGeneral.getNeighborhood(true);
+		for (GridCell<General> cell : gridCellsGeneral) {
+			if (cell.size() > 0) {
+				
+				for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
+					if (obj  instanceof  General) {
+						return true;
+					}
+				}
+				
+				break;
+			}
+		}
+		return false;		
+	}
 	
 	private boolean checkForSpecificCapitan(int radius, jade.core.AID myGeneral) {
 		GridPoint pt = grid.getLocation(this);
@@ -147,7 +168,7 @@ public class Soldier extends MovableAgent {
 				myPoint = moveToPlace(exitX,exitY,greedy);
 				if(myPoint.getX()==exitX && myPoint.getY()==exitY) {
 					stage = State.IS_IN_EXIT;
-					System.out.println("oi " + RunEnvironment.getInstance().getCurrentSchedule().getTickCount());
+					
 					myAgent.removeBehaviour(this);
 				}
 				break;
@@ -200,10 +221,6 @@ public class Soldier extends MovableAgent {
 						}
 					}
 				}
-                
-                String str = myAgent.getLocalName().replaceAll("\\D+","");
-                System.out.println("help me " + myAgent.getLocalName());
-                addBehaviour(new AskForHelp(msg));
                 if(counter>0) {
                 	stage=State.WAITING_FOR_ANSWER;
                 	addBehaviour(new AskForHelp(msg));
@@ -221,8 +238,7 @@ public class Soldier extends MovableAgent {
 			return false;
 		}
 	}
-	
-	
+		
 	
 	private class SoldierRandomMovement extends Behaviour {
 
@@ -231,7 +247,7 @@ public class Soldier extends MovableAgent {
 
 		public void action() {			
 			if(exitX==-1) {
-				moveRnd();
+				moveRandom();
 			} else {
 				NdPoint myPoint = moveToPlace(exitX,exitY,true);
 				if(myPoint.getX()==exitX && myPoint.getY()==exitY) {
@@ -529,12 +545,6 @@ public class Soldier extends MovableAgent {
 		
 	}
 	
-	private void bloodfill(NdPoint point) {
-				
-	}
-	
-
-	
 	private class MessageListener extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
 		private List<String> arrivals = new ArrayList<String>();
@@ -657,9 +667,7 @@ public class Soldier extends MovableAgent {
 
         @Override
         public void handleAllResponses(Vector proposes, Vector responses) {
-            
-        	System.out.println("entrei aqui");
-        	
+        	System.out.println("entrei no soldado");
         	double minCost = Integer.MAX_VALUE;
             ACLMessage minCostProposal = null;
 
@@ -737,7 +745,7 @@ public class Soldier extends MovableAgent {
 
         @Override
         public ACLMessage handleCfp(ACLMessage message) {
-        	System.out.println("recebi esta msg " + message.getContent());
+        	
         	if(stage==State.WAITING_FOR_DECISION || stage==State.HELPING)
         		return null;
         	
@@ -746,7 +754,6 @@ public class Soldier extends MovableAgent {
             String[] coordinates = message.getContent().split("-");
             double cost = Math.abs(Double.parseDouble(coordinates[0])-space.getLocation(myAgent).getX())+ Math.abs(Double.parseDouble(coordinates[1])-space.getLocation(myAgent).getY());
             response.setContent("" + cost);
-            System.out.println("mandei cost " + myAgent.getAID());
             stage=State.WAITING_FOR_DECISION;
             
             return response;
@@ -754,13 +761,14 @@ public class Soldier extends MovableAgent {
 
         @Override
         public ACLMessage handleAcceptProposal(ACLMessage cfp, ACLMessage propose, ACLMessage accept) {
-        	System.out.println("recebi confirmacao " + myAgent.getAID());
-            ACLMessage response = accept.createReply();
+        	ACLMessage response = accept.createReply();
             String[] coordinates = accept.getContent().split("-");
             helpX=Double.parseDouble(coordinates[0]);
             helpY=Double.parseDouble(coordinates[1]);
             response.setPerformative(ACLMessage.INFORM);
             stage=State.HELPING;
+
+			System.out.println("recebi accpet");
             return response;
         }
         

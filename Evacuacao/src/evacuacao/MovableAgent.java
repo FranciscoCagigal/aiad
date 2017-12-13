@@ -7,6 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import jade.lang.acl.ACLMessage;
+import repast.simphony.engine.environment.RunEnvironment;
 import repast.simphony.query.space.grid.GridCell;
 import repast.simphony.query.space.grid.GridCellNgh;
 import repast.simphony.random.RandomHelper;
@@ -23,7 +24,8 @@ public class MovableAgent extends Agent{
 	ContinuousSpace<Object> space;
 	Grid<Object> grid;
 	int visionRadius, speakRadius;
-	double speed;
+	
+	double speed=1;
 	int MAPX = 50, MAPY=50;
 	boolean[][] myMap= new boolean[MAPX+1][MAPY+1];
 	State stage;
@@ -33,12 +35,15 @@ public class MovableAgent extends Agent{
 	Wall wallToBeAbolished;
 	AID helper;
 	
+	double step;
+	ArrayList<GridPoint> path;
+	
 	public MovableAgent(ContinuousSpace<Object> space, Grid<Object> grid, double speed, int vision_radius, int speak_radius) {
 		this.space = space;
 		this.grid = grid;
 		this.visionRadius = vision_radius;
 		this.speakRadius = speak_radius;
-		this.speed=speed;
+		this.step=speed;
 	}
 	
 	void setBerlimWall(Wall w) {
@@ -69,14 +74,14 @@ public class MovableAgent extends Agent{
 		
 		
 		
-		ArrayList<GridPoint> path =shortestPath (otherPoint, greedy);
+		ArrayList<GridPoint> path =shortestPath(otherPoint, greedy);
 		
 		
 		if(path!=null) {
-			if(path.size()>0 && myGridPoint.equals(path.get(0)))
+			/*if(path.size()>0 && myGridPoint.equals(path.get(0)))
 				{
 				path.remove(0);
-				}
+				}*/
 			if(path.size()>0){
 				otherPoint =  new  NdPoint(path.get(0).getX()+0.01,path.get(0).getY()+0.01);
 			}
@@ -106,6 +111,8 @@ public class MovableAgent extends Agent{
 			space.moveTo(this, space.getLocation(this).getX(), 49.9);
 		}
 		NdPoint myPoint = space.getLocation(this);
+		
+		
 
 		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());
 		
@@ -161,7 +168,6 @@ public class MovableAgent extends Agent{
 							
 							hmap.put(wall, hmap.get(wall)-1);
 						}
-						System.out.println(hmap.get(wall));
 						if(hmap.get(wall)>0)
 							return true;											
 					}
@@ -174,7 +180,9 @@ public class MovableAgent extends Agent{
 		return false;
 	}
 	
-	static boolean canMove (Grid<Object> grid, NdPoint pt1, NdPoint pt2) {
+
+	static boolean canMove(Grid<Object> grid, NdPoint pt1, NdPoint pt2) {
+
 		GridPoint pt = new GridPoint( (int) pt1.getX(), (int) pt1.getY());
 		GridCellNgh<WallChunk> nghCreator = new GridCellNgh<WallChunk>(grid, pt, WallChunk.class, 1, 1);
 		List<GridCell<WallChunk>> gridCells = nghCreator.getNeighborhood(true);
@@ -219,37 +227,100 @@ public class MovableAgent extends Agent{
 		return true;
 	}
 
-	void moveRnd() {
+	void moveRandom() {
+		if (path == null || path.isEmpty()) {
+			
+			int tries = 0;
+			int radius = 1;	
+			
+			while (true){
+				ArrayList<NdPoint> positions = getPositionsNotVisited(radius);
+				if (positions.isEmpty()) {
+					tries++;
+					if (tries >= 50){
+						return;
+					}
+					radius++;
+				} else {
+					while ((path == null || path.isEmpty()) && !positions.isEmpty()){
+						NdPoint position = positions.remove(RandomHelper.nextIntFromTo(0, positions.size()-1));
+						path = shortestPath(position, true);
+					}
+					if (path != null && !path.isEmpty())
+						break;
+				}
+			}
+		}
 		
+		GridPoint currentPos = grid.getLocation(this);
+		GridPoint nextPos = path.get(0);
+		double angle = 0;
+		int dx = nextPos.getX() - currentPos.getX();
+		int dy = nextPos.getY() - currentPos.getY();
+		if (dx == 0){
+			if (dy > 0)
+				angle = 90 * Math.PI/180;
+			else angle = -90 * Math.PI/180;
+		} else if (dx > 0){
+			if (dy > 0)
+				angle = 45 * Math.PI/180;
+			else if (dy < 0)
+				angle = -45 * Math.PI/180;
+		} else {
+			if (dy > 0)
+				angle = 135 *Math.PI/180;
+			else if (dy < 0)
+				angle = -135 *Math.PI/180;
+			else
+				angle = 180 *Math.PI/180;
+		}
+		
+		NdPoint currentPoint = space.getLocation(this);
+		space.moveByVector(this, step, angle, 0);
+		NdPoint nextPoint = space.getLocation(this);
+		
+		if (canMove(grid, currentPoint, nextPoint)){					
+			grid.moveTo(this, (int)nextPoint.getX(), (int)nextPoint.getY());
+			if (grid.getLocation(this).equals(nextPos))
+				path.remove(0);
+		} else {
+			// revert position
+			space.moveTo(this, currentPoint.getX(), currentPoint.getY());
+			path = null;
+		}
+		updateMap();
+	}
+	
+	void moveRnd() {		
 		int nr_tries= 0;
 		NdPoint myPoint;
 		double angle;
 		int radius = 1;
 		ArrayList<NdPoint> positions = new ArrayList<NdPoint> ();
-		while(true){
+		
+		while (true){
 			NdPoint lastPoint = space.getLocation(this);
-			if(positions.isEmpty())
+			if (positions.isEmpty())
 				positions = getPositionsNotVisited(radius);
 
-			int direction = chooseRandom(positions,getPossibleDirections());
-			if(direction!=-1) {
-				angle= direction*45*Math.PI/180;
-				space.moveByVector(this , speed, angle , 0);
+			int direction = chooseRandom(positions, getPossibleDirections());
+			if (direction != -1) {
+				angle = direction*45*Math.PI/180;
+				space.moveByVector(this, step, angle, 0);
 				myPoint = space.getLocation(this);
 				
-				if (canMove(grid,lastPoint,  myPoint)){
-					
+				if (canMove(grid,lastPoint, myPoint)){					
 					grid.moveTo(this, (int)myPoint.getX(), (int)myPoint.getY());
 					break;
-				}else {
+				} else {
 					moveToAngle(angle+Math.PI);
 				}
-			}else {
+			} else {
 				positions.clear();
 				radius++;
 			}
 			nr_tries++;
-			if(nr_tries==50)
+			if (nr_tries==50)
 				break;
 		}
 		updateMap();
@@ -260,9 +331,9 @@ public class MovableAgent extends Agent{
 		NdPoint myPoint = space.getLocation(this);
 		int x = (int) myPoint.getX();
 		int y = (int) myPoint.getY();
-		for(int i =-radius; i<= radius;i++) {
-			for(int j =-radius; j<= radius;j++) {
-				if(x+i>=0 && x+i<=MAPX && y+j>=0 && y+j<MAPY && !myMap[x+i][y+j]) {
+		for (int i =- radius; i <= radius; i++) {
+			for (int j =- radius; j <= radius; j++) {
+				if (x+i >= 0 && x+i < MAPX && y+j >= 0 && y+j < MAPY && !myMap[x+i][y+j]) {
 					result.add(new NdPoint(x+i,y+j));
 				}
 			}
@@ -273,53 +344,59 @@ public class MovableAgent extends Agent{
 	ArrayList<Integer> getPossibleDirections() {
 		ArrayList<Integer> result = new ArrayList<Integer>();
 		NdPoint myPoint = space.getLocation(this);
-		for(int i=0;i<7;i++) {
-			NdPoint nextPosition = new NdPoint(myPoint.getX()+speed*Math.cos(i*45*Math.PI/180),myPoint.getY()+speed*Math.sin(45*i*Math.PI/180));
-			if(myPoint.getX()+speed*Math.cos(i*45*Math.PI/180)<=MAPX && myPoint.getY()+speed*Math.sin(45*i*Math.PI/180)<=MAPY && myPoint.getY()+speed*Math.sin(45*i*Math.PI/180)>=0 && myPoint.getX()+speed*Math.cos(i*45*Math.PI/180)>=0 && canMove(grid,myPoint,  nextPosition)) {
+		double dirStep = 45*Math.PI/180;
+		for (int i = 0; i < 7; i++) {
+			NdPoint nextPosition = new NdPoint(
+					myPoint.getX() + step * Math.cos(i*dirStep),
+					myPoint.getY() + step * Math.sin(i*dirStep));
+			
+			if (myPoint.getX() + step * Math.cos(i*dirStep) <= MAPX &&
+					myPoint.getX() + step * Math.cos(i*dirStep) >=0 &&
+					myPoint.getY() + step * Math.sin(i*dirStep) <= MAPY &&
+					myPoint.getY() + step * Math.sin(i*dirStep) >= 0 &&					
+					canMove(grid,myPoint,  nextPosition)) {
 				result.add(i);
-			}
-				
+			}				
 		}		
 		return result;
 	}
 	
 	void updateMap() {
 		NdPoint myPoint = space.getLocation(this);
-		for(int i=-visionRadius;i<=visionRadius;i++) {
-			for(int j=-visionRadius;j<=visionRadius;j++) {
-				if(Math.pow(i, 2)+Math.pow(j, 2)<=Math.pow(visionRadius, 2)) {
-					if((int)myPoint.getY () + j>=0 && (int)myPoint.getY () + j<=MAPY && (int)myPoint.getX () + i>=0 && (int)myPoint.getX () + i<=MAPX) {
-						myMap[(int)myPoint.getX()+i][(int)myPoint.getY () + j] = true;				
+		for (int i =- visionRadius; i <= visionRadius; i++) {
+			for (int j =- visionRadius; j <= visionRadius; j++) {
+				if (Math.pow(i, 2) + Math.pow(j, 2) <= Math.pow(visionRadius, 2)) {
+					if ((int)myPoint.getY () + j >= 0 && (int)myPoint.getY () + j <= MAPY &&
+							(int)myPoint.getX () + i >= 0 && (int)myPoint.getX () + i <= MAPX) {
+						myMap[(int)myPoint.getX() + i][(int)myPoint.getY () + j] = true;				
 					}
 				}
 			}			
 		}
 		
 	}
-	
-
-	
+		
 	NdPoint moveToAngle(double angle) {
-		space.moveByVector(this , speed, angle , 0);	
+		space.moveByVector(this, step, angle, 0);	
 		NdPoint myPoint = space.getLocation(this);
 		
-		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());	
+		grid.moveTo(this, (int)myPoint.getX(), (int)myPoint.getY() );	
 		return myPoint;
 	}
 	
-	int chooseRandom(ArrayList<NdPoint> positions ,ArrayList<Integer> array) {
+	int chooseRandom(ArrayList<NdPoint> positions, ArrayList<Integer> array) {
 		NdPoint myPoint = space.getLocation(this);
 		while(true) {
 			if (positions.isEmpty())
 				return -1;
-			NdPoint position =  positions.get(RandomHelper.nextIntFromTo(0, positions.size()-1));
+			NdPoint position = positions.get(RandomHelper.nextIntFromTo(0, positions.size()-1));
 			
 			double delta_x = position.getX() - myPoint.getX();
 			double delta_y = position.getY() - myPoint.getY();
 			int angle = (int) (Math.atan2(delta_y, delta_x)*180/Math.PI);
 			
-			if(angle<0)
-				angle+=360;
+			if (angle < 0)
+				angle += 360;
 			int int_angle = angle / 45;
 			
 			if(array.contains(int_angle)) {
@@ -327,18 +404,15 @@ public class MovableAgent extends Agent{
 			}else {
 				positions.remove(position);
 			}
-		}
-		
+		}		
 	}
 	
 	public ArrayList<GridPoint> shortestPath (NdPoint pt1, boolean greedy) {
 		GridDimensions gridDim = grid.getDimensions();
-		int gridWidth = gridDim.getWidth();
-		//System.out.println("gridWidth: " + gridWidth);
-		int gridHeight = gridDim.getHeight();
-		//System.out.println("gridHeight: " + gridHeight);
+		int gridWidth = gridDim.getWidth() + 1;
+		int gridHeight = gridDim.getHeight() + 1;
 		int[][] cellWeights = new int[gridWidth][gridHeight];
-		for (int[] row: cellWeights)
+		for (int[] row : cellWeights)
 			Arrays.fill(row, Integer.MAX_VALUE);
 		LinkedList<GridPoint> queue = new LinkedList<GridPoint>();
 		
@@ -348,14 +422,10 @@ public class MovableAgent extends Agent{
 		GridPoint dest = new GridPoint((int) pt1.getX(), (int) pt1.getY());
 		cellWeights[orig.getX()][orig.getY()] = 0;
 		queue.add(orig);
-		//System.out.println("queue size: " + queue.size());
-		
-		//for (boolean[] row: myMap)
-			//Arrays.fill(row, true);
 		
 		/* Find cell weights */
 		boolean destReached = false; 
-		while (!destReached){
+		while (!destReached) {
 			GridPoint current = queue.poll();
 			if (current == null){
 				return null;
@@ -385,8 +455,12 @@ public class MovableAgent extends Agent{
 					neighbours.add(new GridPoint(current.getX() + 1, current.getY() + 1));
 			}
 			
-			for (GridPoint neighbour : neighbours){
-
+			for (GridPoint neighbour : neighbours) {
+				//System.out.println("myMap[" + neighbour.getX() + "][" + neighbour.getY() + "]: " + myMap[neighbour.getX()][neighbour.getY()]);
+				//System.out.println("cellWeights[" + neighbour.getX() + "][" + neighbour.getY() + "]: " + cellWeights[neighbour.getX()][neighbour.getY()]);
+				//System.out.println("canMove([" + (current.getX() + dx) + "," + (current.getY() + dy) + "][" + (neighbour.getX() + dx) + "," + (neighbour.getY() + dy) + "]): "
+				//+ canMove(grid, new NdPoint(current.getX() + dx, current.getY() + dy), new NdPoint(neighbour.getX() + dx, neighbour.getY() + dy)));
+				
 				if ((myMap[neighbour.getX()][neighbour.getY()] && cellWeights[neighbour.getX()][neighbour.getY()] == Integer.MAX_VALUE &&
 						canMove(grid, new NdPoint(current.getX() + dx, current.getY() + dy), new NdPoint(neighbour.getX() + dx, neighbour.getY() + dy))) ||
 						(greedy && cellWeights[neighbour.getX()][neighbour.getY()] == Integer.MAX_VALUE && !myMap[neighbour.getX()][neighbour.getY()]))	{
@@ -396,6 +470,7 @@ public class MovableAgent extends Agent{
 					
 					if (neighbour.equals(dest)){
 						destReached = true;
+						//System.out.println("destReached");
 						break;
 					}
 				}
@@ -413,18 +488,18 @@ public class MovableAgent extends Agent{
 					if (current.getX() > 0)
 						neighbours.add(new GridPoint(current.getX() - 1, current.getY() - 1));
 					neighbours.add(new GridPoint(current.getX(), current.getY() - 1));
-					if (current.getX() < gridWidth)
+					if (current.getX() < gridWidth - 1)
 						neighbours.add(new GridPoint(current.getX() + 1, current.getY() - 1));
 				}
 				if (current.getX() > 0)
 					neighbours.add(new GridPoint(current.getX() - 1, current.getY()));
-				if (current.getX() < gridWidth)
+				if (current.getX() < gridWidth - 1)
 					neighbours.add(new GridPoint(current.getX() + 1, current.getY()));
-				if (current.getY() < gridHeight) {
+				if (current.getY() < gridHeight - 1) {
 					if (current.getX() > 0)
 						neighbours.add(new GridPoint(current.getX() - 1, current.getY() + 1));
 					neighbours.add(new GridPoint(current.getX(), current.getY() + 1));
-					if (current.getX() < gridWidth)
+					if (current.getX() < gridWidth - 1)
 						neighbours.add(new GridPoint(current.getX() + 1, current.getY() + 1));
 				}
 				//System.out.println("neighbours size: " + neighbours.size());
@@ -443,11 +518,14 @@ public class MovableAgent extends Agent{
 						minValue = value;
 						minNeighbour = neighbour;
 					}
-				}
-				path.add(0, minNeighbour);
-				if (minValue > 1)
+				}				
+				if (minValue >= 1){
+					path.add(0, minNeighbour);
 					current = minNeighbour;
-				else break;
+				} else {
+					path.add(dest);
+					break;
+				}
 			}
 		}
 		return path;		
@@ -474,6 +552,4 @@ public class MovableAgent extends Agent{
 		message_inform.setReplyWith(id + " " + System.currentTimeMillis());
 		this.send(message_inform);
 	}
-	
-	
 }
