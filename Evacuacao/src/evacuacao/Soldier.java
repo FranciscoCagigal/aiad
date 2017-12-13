@@ -2,10 +2,16 @@ package evacuacao;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Vector;
 
+import evacuacao.General.AskForHelp;
+import jade.core.AID;
+import jade.domain.FIPANames;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import repast.simphony.engine.environment.RunEnvironment;
 import repast.simphony.query.space.grid.GridCell;
 import repast.simphony.query.space.grid.GridCellNgh;
 import repast.simphony.random.RandomHelper;
@@ -18,6 +24,8 @@ import repast.simphony.space.grid.GridPoint;
 import sajas.core.behaviours.Behaviour;
 import sajas.core.behaviours.CyclicBehaviour;
 import sajas.core.behaviours.OneShotBehaviour;
+import sajas.proto.ContractNetInitiator;
+import sajas.proto.ContractNetResponder;
 
 public class Soldier extends MovableAgent {
 	
@@ -28,7 +36,6 @@ public class Soldier extends MovableAgent {
 	
 	//general goal
 	private double generalPlaceX, generalPlaceY;
-	private State stage = State.WAITING_FOR_START;
 	private jade.core.AID myGeneral;
 	
 	private Boolean canDelete = false;
@@ -37,6 +44,8 @@ public class Soldier extends MovableAgent {
 	
 	private int type_of_game;
 	private int MAPX = 50, MAPY=50;
+	
+	private Boolean greedy;
 	
 	
 	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, double x, double y, int vision_radius, int speak_radius, int type_of_game) {
@@ -48,57 +57,33 @@ public class Soldier extends MovableAgent {
 		this.visionRadius = vision_radius;
 		this.speakRadius = speak_radius;
 		this.type_of_game = type_of_game;
+		if(type_of_game==2)
+			greedy=false;
+		else if(type_of_game==3)
+			greedy=true;
+
+		stage = State.WAITING_FOR_START;
 	};
 	
 	protected void setup() {
 
 		space.moveTo(this, posX, posY);
 		grid.moveTo(this, (int) posX, (int) posY);
-
-		//updateMap();
-		myMap[0][0] = true;
-		myMap[1][0] = true;
-		System.out.println(shortestPath (new NdPoint(10,0.5), true));
-		/*addBehaviour(new SearchForExit());
+		
+		addBehaviour(new ShareMap());
+		addBehaviour(new SearchForExit());
 		addBehaviour(new SoldierMessages());
 		addBehaviour(new MessageListener());
-	
+		addBehaviour(new AnswerCallBehaviour());
+		
 		if(type_of_game==0)
 			addBehaviour(new SoldierRandomMovement());
 		else if(type_of_game==1) 
 			addBehaviour(new SoldierRandomCoordenatedMovement());
-		else addBehaviour(new SoldierSuperCoordinatedRandomMovement());*/
-	}
-	
-	
-	
-	
-	
-	
-
-	
-	
-	
-	private boolean checkForCapitans(int radius) {
-		GridPoint pt = grid.getLocation(this);
-		GridCellNgh<General> nghCreatorGeneral = new GridCellNgh<General>(grid, pt, General.class, radius, radius);
-		List<GridCell<General>> gridCellsGeneral = nghCreatorGeneral.getNeighborhood(true);
-		for (GridCell<General> cell : gridCellsGeneral) {
-			if (cell.size() > 0) {
-				
-				for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
-					if (obj  instanceof  General) {
-						return true;
-					}
-				}
-				
-				break;
-			}
-		}
-		return false;		
-	}
-	
-	
+		else addBehaviour(new SoldierSuperCoordinatedRandomMovement());
+		
+		id=this.getLocalName().replaceAll("\\D+","");
+	}	
 	
 	private boolean checkForSpecificCapitan(int radius, jade.core.AID myGeneral) {
 		GridPoint pt = grid.getLocation(this);
@@ -122,29 +107,110 @@ public class Soldier extends MovableAgent {
 	private class SoldierSuperCoordinatedRandomMovement extends Behaviour {
 
 		private static final long serialVersionUID = 1L;
+		@SuppressWarnings("deprecation")
 		@Override
 		public void action() {
 			NdPoint  myPoint;
 			switch(stage) {
+			case HELPING:
+				myPoint = moveToPlace(helpX,helpY,greedy);
+				
+				if(myPoint!=null &&  myPoint.getX()==helpX && myPoint.getY()==helpY) {
+					abolishWall();
+					stage=State.MOVING;
+				}
+				break;
+			case FINISHED_MOVING:
+				if(checkForSpecificCapitan(speakRadius,myGeneral)) {
+					myAgent.addBehaviour(new WarnGeneralArrival());
+				}
+					
+				else {
+					transmitNewsToNearbySoldiers(myAgent.getAID().toString()+"/-/"+generalPlaceX+"/-/"+generalPlaceY+"/-/"+myGeneral.toString(),"transmit_arrival");
+				}
+				break;
 			case MOVING:
-				myPoint = moveToPlace(generalPlaceX,generalPlaceY);
-				if(myPoint.getX()==generalPlaceX && myPoint.getY()==generalPlaceY) {
+				myPoint = moveToPlace(generalPlaceX,generalPlaceY,true);
+				if(myPoint!=null &&  myPoint.getX()==generalPlaceX && myPoint.getY()==generalPlaceY) {
 					stage=State.FINISHED_MOVING;
-					System.out.println("cheguei a mh posicao");
 					if(checkForSpecificCapitan(speakRadius,myGeneral)) {
-						System.out.println("encontrei o meu general");
 						myAgent.addBehaviour(new WarnGeneralArrival());
 					}
 						
 					else {
-						System.out.println("nao encontrei o meu general");
-						transmitNewsToNearbySoldiers(myAgent.getAID().toString()+"/-/"+myGeneral.toString(),"transmit_arrival");
+						transmitNewsToNearbySoldiers(myAgent.getAID().toString()+"/-/"+generalPlaceX+"/-/"+generalPlaceY+"/-/"+myGeneral.toString(),"transmit_arrival");
 					}
 				}
 				break;
 			case FOUND_EXIT:
-				moveToPlace(exitX,exitY);
+				
+				myPoint = moveToPlace(exitX,exitY,greedy);
+				if(myPoint.getX()==exitX && myPoint.getY()==exitY) {
+					stage = State.IS_IN_EXIT;
+					System.out.println("oi " + RunEnvironment.getInstance().getCurrentSchedule().getTickCount());
+					myAgent.removeBehaviour(this);
+				}
 				break;
+			case WAITING_FOR_ANSWER:
+				if(wallToBeAbolished.wasDestroyed())
+					stage=State.MOVING;
+				break;
+			
+			case ASKING_FOR_HELP:
+				ACLMessage msg = new ACLMessage(ACLMessage.CFP);
+                msg.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+                msg.setContent(space.getLocation(myAgent).getX() + "-" + space.getLocation(myAgent).getY());
+                msg.setOntology("cryForHelp");
+                msg.setPerformative(ACLMessage.CFP);
+				msg.setConversationId("request_soldier"+id);
+				Date date = new Date();
+				date.setSeconds(date.getSeconds()+2);
+				msg.setReplyByDate(date);
+                GridPoint pt = grid.getLocation(myAgent);
+				
+				GridCellNgh<General> nghCreatorGeneral = new GridCellNgh<General>(grid, pt, General.class, speakRadius, speakRadius);
+				List<GridCell<General>> gridCellsGeneral = nghCreatorGeneral.getNeighborhood(true);
+				
+				int counter=0;
+				
+				for (GridCell<General> cell : gridCellsGeneral) {
+					if (cell.size() > 0) {
+						
+						for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
+							if (obj  instanceof  General) {
+								msg.addReceiver(((General) obj).getAID());
+								counter++;
+							}
+						}
+					}
+				}
+					
+				GridCellNgh<Soldier> nghCreatorGeneral1 = new GridCellNgh<Soldier>(grid, pt, Soldier.class, speakRadius, speakRadius);
+				List<GridCell<Soldier>> gridCellsGeneral1 = nghCreatorGeneral1.getNeighborhood(true);
+					
+					
+				for (GridCell<Soldier> cell1 : gridCellsGeneral1) {
+					if (cell1.size() > 0) {
+						
+						for (Object  obj : grid.getObjectsAt(cell1.getPoint().getX(), cell1.getPoint().getY ())) {
+							if (obj  instanceof  Soldier && !((Soldier) obj).getAID().equals(myAgent.getAID())) {
+								msg.addReceiver(((Soldier) obj).getAID());
+								counter++;
+							}
+						}
+					}
+				}
+                
+                String str = myAgent.getLocalName().replaceAll("\\D+","");
+                System.out.println("help me " + myAgent.getLocalName());
+                addBehaviour(new AskForHelp(msg));
+                if(counter>0) {
+                	stage=State.WAITING_FOR_ANSWER;
+                	addBehaviour(new AskForHelp(msg));
+                }
+                else stage=State.MOVING;
+				break;
+			
 			}
 			
 		}
@@ -167,9 +233,10 @@ public class Soldier extends MovableAgent {
 			if(exitX==-1) {
 				moveRnd();
 			} else {
-				NdPoint myPoint = moveToPlace(exitX,exitY);
+				NdPoint myPoint = moveToPlace(exitX,exitY,true);
 				if(myPoint.getX()==exitX && myPoint.getY()==exitY) {
 					stage = State.IS_IN_EXIT;
+					
 					myAgent.removeBehaviour(this);
 				}
 			}
@@ -187,7 +254,7 @@ public class Soldier extends MovableAgent {
 		private static final long serialVersionUID = 1L;
 		
 		private boolean[][] auxMyMap;
-		private int counter=0;
+		private int counter=1;
 		
 		@Override
 		public void action() {	
@@ -196,6 +263,8 @@ public class Soldier extends MovableAgent {
 			}
 			if(auxMyMap==null || compareArrays(auxMyMap,myMap)) {
 				transmitNewsToNearbySoldiers(myAgent.getAID()+"/"+counter+"/-/"+Arrays.deepToString(myMap),"shareMap");
+				transmitNewsToNearbyGeneral(myAgent.getAID()+"/"+counter+"/-/"+Arrays.deepToString(myMap),"shareMap");
+				counter++;
 			}
 			
 		}
@@ -242,16 +311,22 @@ public class Soldier extends MovableAgent {
 		this.send(message_inform);
 	}
 	
+	
+	
 	private class WarnGeneralArrival extends OneShotBehaviour{
 
 		private static final long serialVersionUID = 1L;
 
 		@Override
 		public void action() {
+			if(stage == State.MOVING){
+				myAgent.removeBehaviour(this);
+				return;
+			}
 			ACLMessage message_inform = new ACLMessage(ACLMessage.INFORM);
-			System.out.println("vou informar o general");
+			
 			message_inform.addReceiver(myGeneral);
-			message_inform.setContent(myAgent.getAID().toString());
+			message_inform.setContent(myAgent.getAID().toString()+"/-/"+generalPlaceX+"/-/"+generalPlaceY);
 			message_inform.setConversationId("arrived");
 			message_inform.setReplyWith("arrived " + System.currentTimeMillis());
 			myAgent.send(message_inform);
@@ -458,15 +533,7 @@ public class Soldier extends MovableAgent {
 				
 	}
 	
-	private void buildMapFromString(String[] map){
-		for(int i=0;i<myMap.length;i++) {
-			for(int j=0;j<myMap[i].length;j++) {
-				if(!myMap[i][j] && Boolean.parseBoolean(map[j+i*myMap.length])) {
-					myMap[i][j]=true;
-				}
-			}
-		}
-	}
+
 	
 	private class MessageListener extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
@@ -477,6 +544,24 @@ public class Soldier extends MovableAgent {
 		public void action() {
 			if(stage == State.IS_IN_EXIT)
 				myAgent.removeBehaviour(this);
+			
+			while(true) {
+				MessageTemplate msgtemp = MessageTemplate.MatchConversationId("shareMap");
+				ACLMessage reply = myAgent.receive(msgtemp);
+				try {	
+					String message = reply.getContent();
+					String[] coords = message.split("/-/");
+					if(!maps.contains(coords[0])) {
+						maps.add(coords[0]);
+						String[] map = coords[1].replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("\\s", "").split(",");
+						buildMapFromString(map);	
+					}
+					
+				} catch (NullPointerException e) {
+					break;
+				}
+			}
+			
 			MessageTemplate msgtemp = MessageTemplate.MatchConversationId("inform_exit");
 			ACLMessage reply = myAgent.receive(msgtemp);
 			
@@ -486,28 +571,12 @@ public class Soldier extends MovableAgent {
 				exitX = Integer.parseInt(coords[0]);
 				exitY = Integer.parseInt(coords[1]);
 				stage=State.FOUND_EXIT;
+				transmitNewsToNearbySoldiers(myAgent.getAID()+"/"+0+"/-/"+Arrays.deepToString(myMap),"shareMap");
 				transmitNewsToNearbySoldiers(message,"inform_exit");
 			} catch (NullPointerException e) {
 			}
 			
 			if(exitX==-1) {
-				
-				while(true) {
-					msgtemp = MessageTemplate.MatchConversationId("shareMap");
-					reply = myAgent.receive(msgtemp);
-					try {	
-						String message = reply.getContent();
-						String[] coords = message.split("/-/");
-						if(!maps.contains(coords[0])) {
-							maps.add(coords[0]);
-							String[] map = coords[1].replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("\\s", "").split(",");
-							buildMapFromString(map);	
-						}
-						
-					} catch (NullPointerException e) {
-						break;
-					}
-				}
 				
 				while(true) {
 					msgtemp = MessageTemplate.MatchConversationId("follow_me");
@@ -518,7 +587,6 @@ public class Soldier extends MovableAgent {
 							myGeneral = reply.getSender();
 						}
 						String message = reply.getContent();
-						System.out.println("recebi do general "+ message);
 						String[] coords = message.split("/-/");
 						if(myGeneral.toString().equals(coords[0])&& !reply.getSender().toString().equals(myAgent.getAID().toString()) && stage!=State.MOVING) {
 							for(int i=1;i<coords.length;i+=3) {
@@ -526,7 +594,6 @@ public class Soldier extends MovableAgent {
 									if(generalPlaceX != Double.parseDouble(coords[i+1]) || generalPlaceY != Double.parseDouble(coords[i+2])) {
 										generalPlaceX = Double.parseDouble(coords[i+1]);
 										generalPlaceY = Double.parseDouble(coords[i+2]);
-										
 										stage=State.MOVING;
 										canDelete=true;
 										transmitNewsToNearbySoldiers(message,"follow_me");
@@ -555,12 +622,12 @@ public class Soldier extends MovableAgent {
 						try {
 							String message = reply.getContent();
 							String[] messages = message.split("/-/");
-							if(!arrivals.contains(message) && !messages[0].equals(myAgent.getAID().toString())) {
+							if(!messages[0].equals(myAgent.getAID().toString()) && !reply.getSender().toString().equals(myAgent.getAID().toString())) {
 								arrivals.add(message);
-								if(myGeneral.toString().equals(messages[1]) && checkForSpecificCapitan(speakRadius,myGeneral)) {
+								if(myGeneral.toString().equals(messages[3]) && checkForSpecificCapitan(speakRadius,myGeneral)) {
 									ACLMessage message_inform = new ACLMessage(ACLMessage.INFORM);						
 									message_inform.addReceiver(myGeneral);
-									message_inform.setContent(messages[0]);
+									message_inform.setContent(messages[0]+"/-/"+messages[1]+"/-/"+messages[2]);
 									message_inform.setConversationId("arrived");
 									message_inform.setReplyWith("arrived " + System.currentTimeMillis());
 									myAgent.send(message_inform);
@@ -580,4 +647,125 @@ public class Soldier extends MovableAgent {
 			
 		}
 	}	
+	
+	public class AskForHelp extends ContractNetInitiator {
+		private static final long serialVersionUID = 1L;
+
+		AskForHelp(ACLMessage msg) {
+            super(Soldier.this, msg);
+        }
+
+        @Override
+        public void handleAllResponses(Vector proposes, Vector responses) {
+            
+        	System.out.println("entrei aqui");
+        	
+        	double minCost = Integer.MAX_VALUE;
+            ACLMessage minCostProposal = null;
+
+            for (Object proposeObj : proposes) {
+            	if(proposeObj!=null) {
+	                ACLMessage propose = (ACLMessage) proposeObj;
+	                double cost = Double.parseDouble(propose.getContent());
+	                if (cost < minCost) {
+	                    minCost = cost;
+	                    if (minCostProposal != null) {
+	                        ACLMessage response = minCostProposal.createReply();
+	                        response.setPerformative(ACLMessage.REJECT_PROPOSAL);
+	                        responses.add(response);
+	                    }
+	
+	                    minCostProposal = propose;
+	                } else {
+	                    ACLMessage response = propose.createReply();
+	                    response.setPerformative(ACLMessage.REJECT_PROPOSAL);
+	                    responses.add(response);
+	                }
+            	}
+            }
+
+            if (minCostProposal != null) {
+                ACLMessage selectedMessage = minCostProposal.createReply();
+                selectedMessage.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
+                helper=(sajas.core.AID) selectedMessage.getSender();
+                selectedMessage.setContent(space.getLocation(myAgent).getX() + "-" + space.getLocation(myAgent).getY());
+                GridPoint pt = grid.getLocation(myAgent);
+				
+				GridCellNgh<General> nghCreatorGeneral = new GridCellNgh<General>(grid, pt, General.class, speakRadius, speakRadius);
+				List<GridCell<General>> gridCellsGeneral = nghCreatorGeneral.getNeighborhood(true);
+				
+				for (GridCell<General> cell : gridCellsGeneral) {
+					if (cell.size() > 0) {
+						
+						for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
+							if (obj  instanceof  General && !((General) obj).getAID().equals(myAgent.getAID())) {
+								((General) obj).setBerlimWall(wallToBeAbolished);
+								break;
+							}
+						}
+					}
+				}
+					
+				GridCellNgh<Soldier> nghCreatorGeneral1 = new GridCellNgh<Soldier>(grid, pt, Soldier.class, speakRadius, speakRadius);
+				List<GridCell<Soldier>> gridCellsGeneral1 = nghCreatorGeneral1.getNeighborhood(true);
+					
+					
+				for (GridCell<Soldier> cell1 : gridCellsGeneral1) {
+					if (cell1.size() > 0) {
+						
+						for (Object  obj : grid.getObjectsAt(cell1.getPoint().getX(), cell1.getPoint().getY ())) {
+							if (obj  instanceof  Soldier) {
+								((Soldier) obj).setBerlimWall(wallToBeAbolished);
+								break;
+							}
+						}
+					}
+				}
+                responses.add(selectedMessage);
+            }
+        }
+
+    }
+	
+	private class AnswerCallBehaviour extends ContractNetResponder {
+		private static final long serialVersionUID = 1L;
+
+		AnswerCallBehaviour() {
+			super(Soldier.this, MessageTemplate.and(
+                    MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET), MessageTemplate.MatchPerformative(ACLMessage.CFP)));
+        }
+
+        @Override
+        public ACLMessage handleCfp(ACLMessage message) {
+        	System.out.println("recebi esta msg " + message.getContent());
+        	if(stage==State.WAITING_FOR_DECISION || stage==State.HELPING)
+        		return null;
+        	
+            ACLMessage response = message.createReply();
+            response.setPerformative(ACLMessage.PROPOSE);
+            String[] coordinates = message.getContent().split("-");
+            double cost = Math.abs(Double.parseDouble(coordinates[0])-space.getLocation(myAgent).getX())+ Math.abs(Double.parseDouble(coordinates[1])-space.getLocation(myAgent).getY());
+            response.setContent("" + cost);
+            System.out.println("mandei cost " + myAgent.getAID());
+            stage=State.WAITING_FOR_DECISION;
+            
+            return response;
+        }
+
+        @Override
+        public ACLMessage handleAcceptProposal(ACLMessage cfp, ACLMessage propose, ACLMessage accept) {
+        	System.out.println("recebi confirmacao " + myAgent.getAID());
+            ACLMessage response = accept.createReply();
+            String[] coordinates = accept.getContent().split("-");
+            helpX=Double.parseDouble(coordinates[0]);
+            helpY=Double.parseDouble(coordinates[1]);
+            response.setPerformative(ACLMessage.INFORM);
+            stage=State.HELPING;
+            return response;
+        }
+        
+        public void handleRejectProposal(ACLMessage cfp, ACLMessage propose, ACLMessage reject) {
+        	stage=State.MOVING;
+        }
+    }
 }

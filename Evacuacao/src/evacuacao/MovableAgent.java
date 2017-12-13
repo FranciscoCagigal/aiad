@@ -2,9 +2,11 @@ package evacuacao;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
+import jade.lang.acl.ACLMessage;
 import repast.simphony.query.space.grid.GridCell;
 import repast.simphony.query.space.grid.GridCellNgh;
 import repast.simphony.random.RandomHelper;
@@ -13,6 +15,7 @@ import repast.simphony.space.continuous.NdPoint;
 import repast.simphony.space.grid.Grid;
 import repast.simphony.space.grid.GridDimensions;
 import repast.simphony.space.grid.GridPoint;
+import sajas.core.AID;
 import sajas.core.Agent;
 
 public class MovableAgent extends Agent{
@@ -23,6 +26,12 @@ public class MovableAgent extends Agent{
 	double speed;
 	int MAPX = 50, MAPY=50;
 	boolean[][] myMap= new boolean[MAPX+1][MAPY+1];
+	State stage;
+	String id;
+	double helpX,helpY;
+	HashMap<Wall, Integer> hmap = new HashMap<Wall, Integer>();
+	Wall wallToBeAbolished;
+	AID helper;
 	
 	public MovableAgent(ContinuousSpace<Object> space, Grid<Object> grid, double speed, int vision_radius, int speak_radius) {
 		this.space = space;
@@ -32,26 +41,137 @@ public class MovableAgent extends Agent{
 		this.speed=speed;
 	}
 	
-	NdPoint moveToPlace(double x, double y) {
+	void setBerlimWall(Wall w) {
+		wallToBeAbolished=w;
+	}
+	
+	void buildMapFromString(String[] map){
+		for(int i=0;i<myMap.length;i++) {
+			for(int j=0;j<myMap[i].length;j++) {
+				if(!myMap[i][j] && Boolean.parseBoolean(map[j+i*myMap.length])) {
+					myMap[i][j]=true;
+				}
+			}
+		}
+	}
+	
+	NdPoint moveToPlace(double x, double y, Boolean greedy) {
+		updateMap();
 		NdPoint  otherPoint = new  NdPoint(x,y);
+		if(!canMove(grid,space.getLocation(this),  otherPoint) && canAbollish(grid,space.getLocation(this),  otherPoint)) {
+			return null;
+		}
+		
+		space.moveTo(this, space.getLocation(this).getX()+0.01, space.getLocation(this).getY());
+		
 		NdPoint lastPoint = space.getLocation(this);
-		double distance = Math.sqrt(Math.pow(lastPoint.getX()-x,2) + Math.pow(lastPoint.getY()-y,2));
+		GridPoint myGridPoint = grid.getLocation(this);
+		
+		
+		
+		ArrayList<GridPoint> path =shortestPath (otherPoint, greedy);
+		
+		
+		if(path!=null) {
+			if(path.size()>0 && myGridPoint.equals(path.get(0)))
+				{
+				path.remove(0);
+				}
+			if(path.size()>0){
+				otherPoint =  new  NdPoint(path.get(0).getX()+0.01,path.get(0).getY()+0.01);
+			}
+		}
+		
+		
+		double distance = Math.sqrt(Math.pow(lastPoint.getX()-otherPoint.getX(),2) + Math.pow(lastPoint.getY()-otherPoint.getY(),2));
 		double delta_x = otherPoint.getX() - lastPoint.getX();
 		double delta_y = otherPoint.getY() - lastPoint.getY();
 		double angle = Math.atan2(delta_y, delta_x);
-		//double  angle = SpatialMath.calcAngleFor2DMovement(space ,lastPoint , otherPoint );
 		if (distance >speed)
 			space.moveByVector(this , speed, angle , 0);
 		else {
 			space.moveByVector(this , distance, angle , 0);
 		}
-		NdPoint myPoint = space.getLocation(this);
-		if(canMove(grid,lastPoint,  myPoint)) {
-			
+		
+		if(space.getLocation(this).getX()-lastPoint.getX()>speed) {
+			space.moveTo(this, 0, space.getLocation(this).getY());
 		}
+		if(lastPoint.getX()- space.getLocation(this).getX()>speed) {
+			space.moveTo(this, 49.9, space.getLocation(this).getY());
+		}
+		if(space.getLocation(this).getY()-lastPoint.getY()>speed) {
+			space.moveTo(this, space.getLocation(this).getX() , 0);
+		}
+		if(lastPoint.getX()- space.getLocation(this).getX()>speed) {
+			space.moveTo(this, space.getLocation(this).getX(), 49.9);
+		}
+		NdPoint myPoint = space.getLocation(this);
+
 		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());
 		
 		return myPoint;
+	}
+	
+	void abolishWall() {
+		wallToBeAbolished.destroyBerlimWall();
+	}
+	
+	boolean canAbollish (Grid<Object> grid, NdPoint pt1, NdPoint pt2) {
+		GridPoint pt = new GridPoint( (int) pt1.getX(), (int) pt1.getY());
+		GridCellNgh<WallChunk> nghCreator = new GridCellNgh<WallChunk>(grid, pt, WallChunk.class, 1, 1);
+		List<GridCell<WallChunk>> gridCells = nghCreator.getNeighborhood(true);
+		List<Wall> walls = new ArrayList<Wall>();
+		for (GridCell<WallChunk> cell : gridCells ) {
+			if (cell.size() > 0) {
+				for (WallChunk wc : cell.items() ) {
+					Wall wall = wc.getWall();
+					if (walls.contains(wall))
+						continue;
+					walls.add(wall);
+					if (Geometry.doLinesIntersect(
+							pt1.getX(), pt1.getY(), pt2.getX(), pt2.getY(),
+							wall.getX1(), wall.getY1(), wall.getX2(), wall.getY2() )){
+						return false;											
+					}
+				}
+			}
+		}
+		
+		GridCellNgh<WallChunkMovable> nghCreator1 = new GridCellNgh<WallChunkMovable>(grid, pt, WallChunkMovable.class, 1, 1);
+		List<GridCell<WallChunkMovable>> gridCells1 = nghCreator1.getNeighborhood(true);
+		walls = new ArrayList<Wall>();
+		for (GridCell<WallChunkMovable> cell : gridCells1 ) {
+			if (cell.size() > 0) {
+				for (WallChunkMovable wc : cell.items() ) {
+					Wall wall = wc.getWall();
+					if (walls.contains(wall))
+						continue;
+					walls.add(wall);
+					if (Geometry.doLinesIntersect(
+							pt1.getX(), pt1.getY(), pt2.getX(), pt2.getY(),
+							wall.getX1(), wall.getY1(), wall.getX2(), wall.getY2() )){
+						if(!wall.hasBeenAbolished()) {
+							wall.abolish();
+							stage=State.ASKING_FOR_HELP;
+							wallToBeAbolished=wall;
+						}
+						if(!hmap.containsKey(wall)) {
+							hmap.put(wall, 20);
+						}else {
+							
+							hmap.put(wall, hmap.get(wall)-1);
+						}
+						System.out.println(hmap.get(wall));
+						if(hmap.get(wall)>0)
+							return true;											
+					}
+				}
+			}
+		}
+		
+		
+		
+		return false;
 	}
 	
 	static boolean canMove (Grid<Object> grid, NdPoint pt1, NdPoint pt2) {
@@ -74,6 +194,28 @@ public class MovableAgent extends Agent{
 				}
 			}
 		}
+		
+		GridCellNgh<WallChunkMovable> nghCreator1 = new GridCellNgh<WallChunkMovable>(grid, pt, WallChunkMovable.class, 1, 1);
+		List<GridCell<WallChunkMovable>> gridCells1 = nghCreator1.getNeighborhood(true);
+		walls = new ArrayList<Wall>();
+		for (GridCell<WallChunkMovable> cell : gridCells1 ) {
+			if (cell.size() > 0) {
+				for (WallChunkMovable wc : cell.items() ) {
+					Wall wall = wc.getWall();
+					if (walls.contains(wall))
+						continue;
+					walls.add(wall);
+					if (Geometry.doLinesIntersect(
+							pt1.getX(), pt1.getY(), pt2.getX(), pt2.getY(),
+							wall.getX1(), wall.getY1(), wall.getX2(), wall.getY2() )){
+						return false;											
+					}
+				}
+			}
+		}
+		
+		
+		
 		return true;
 	}
 
@@ -118,12 +260,9 @@ public class MovableAgent extends Agent{
 		NdPoint myPoint = space.getLocation(this);
 		int x = (int) myPoint.getX();
 		int y = (int) myPoint.getY();
-		System.out.println("começo " + this.getAID() + " " + myPoint + " " + myMap[44][44]);
-		System.out.println("começo " + radius);
 		for(int i =-radius; i<= radius;i++) {
 			for(int j =-radius; j<= radius;j++) {
 				if(x+i>=0 && x+i<=MAPX && y+j>=0 && y+j<MAPY && !myMap[x+i][y+j]) {
-					System.out.println("entrei");
 					result.add(new NdPoint(x+i,y+j));
 				}
 			}
@@ -146,7 +285,6 @@ public class MovableAgent extends Agent{
 	
 	void updateMap() {
 		NdPoint myPoint = space.getLocation(this);
-		System.out.println("minha posicao " + myPoint);
 		for(int i=-visionRadius;i<=visionRadius;i++) {
 			for(int j=-visionRadius;j<=visionRadius;j++) {
 				if(Math.pow(i, 2)+Math.pow(j, 2)<=Math.pow(visionRadius, 2)) {
@@ -184,9 +322,7 @@ public class MovableAgent extends Agent{
 				angle+=360;
 			int int_angle = angle / 45;
 			
-			System.out.println("angle " + position + " " + angle + " " + Arrays.deepToString(array.toArray()));
 			if(array.contains(int_angle)) {
-				System.out.println("int_angle " + int_angle);
 				return int_angle;
 			}else {
 				positions.remove(position);
@@ -207,26 +343,21 @@ public class MovableAgent extends Agent{
 		LinkedList<GridPoint> queue = new LinkedList<GridPoint>();
 		
 		NdPoint origPrecise = space.getLocation(this);
-		System.out.println("origPrecise: " + origPrecise);
 		GridPoint orig = grid.getLocation(this);		
-		System.out.println("orig: " + orig);
 		double dx = origPrecise.getX() - orig.getX(), dy = origPrecise.getY() - orig.getY();
-		System.out.println("dx, dy: " + dx + " " + dy);
 		GridPoint dest = new GridPoint((int) pt1.getX(), (int) pt1.getY());
-		System.out.println("dest: " + dest);
 		cellWeights[orig.getX()][orig.getY()] = 0;
 		queue.add(orig);
 		//System.out.println("queue size: " + queue.size());
 		
 		//for (boolean[] row: myMap)
-		//	Arrays.fill(row, true);
+			//Arrays.fill(row, true);
 		
 		/* Find cell weights */
 		boolean destReached = false; 
 		while (!destReached){
 			GridPoint current = queue.poll();
 			if (current == null){
-				System.out.println("queue is null");
 				return null;
 			}else{
 				//System.out.println("queue is not null");
@@ -265,7 +396,6 @@ public class MovableAgent extends Agent{
 					
 					if (neighbour.equals(dest)){
 						destReached = true;
-						System.out.println("destReached");
 						break;
 					}
 				}
@@ -323,6 +453,27 @@ public class MovableAgent extends Agent{
 		return path;		
 	}
 	
+	void transmitNewsToNearbyGeneral(String content, String id) {
+		GridPoint pt = grid.getLocation(this);
+		GridCellNgh<General> nghCreator = new GridCellNgh<General>(grid, pt, General.class, speakRadius, speakRadius);
+		List<GridCell<General>> gridCells = nghCreator.getNeighborhood(true);
+		ACLMessage message_inform = new ACLMessage(ACLMessage.INFORM);
+
+		for (GridCell<General> cell : gridCells) {
+			if (cell.size() > 0) {
+				
+				for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
+					if (obj  instanceof  General) {
+						message_inform.addReceiver(((General) obj).getAID());
+					}
+				}		
+			}
+		}
+		message_inform.setContent(content);
+		message_inform.setConversationId(id);
+		message_inform.setReplyWith(id + " " + System.currentTimeMillis());
+		this.send(message_inform);
+	}
 	
 	
 }

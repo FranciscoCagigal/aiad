@@ -1,7 +1,11 @@
-<repast.simphony.visualization.engine.CartesianDisplayDescriptor>
+<repast.simphony.visualization.engine.CartesianDisplayDescriptor simphonyVersion="2.5.0">
   <name>New Display</name>
   <type>2D</type>
   <styles>
+    <entry>
+      <string>evacuacao.WallChunkMovable</string>
+      <string>repast.simphony.visualization.editedStyle.EditedStyle2D</string>
+    </entry>
     <entry>
       <string>evacuacao.WallChunk</string>
       <string>repast.simphony.visualization.editedStyle.EditedStyle2D</string>
@@ -20,6 +24,10 @@
     </entry>
   </styles>
   <editedStyles>
+    <entry>
+      <string>evacuacao.WallChunkMovable</string>
+      <string>evacuacao.WallChunkMovable.style_2.xml</string>
+    </entry>
     <entry>
       <string>evacuacao.WallChunk</string>
       <string>evacuacao.WallChunk.style_1.xml</string>
@@ -47,27 +55,31 @@
     <pType>LAST</pType>
     <duration>-1.0</duration>
     <frequency>REPEAT</frequency>
-    <hashCode>1432852727</hashCode>
+    <hashCode>-622252946</hashCode>
   </schedParams>
   <layoutClassName>foo.bar.baz</layoutClassName>
   <layoutProjection>space</layoutProjection>
   <layoutInterval>0</layoutInterval>
   <layerOrder>
     <entry>
-      <string>evacuacao.WallChunk</string>
+      <string>evacuacao.WallChunkMovable</string>
       <int>0</int>
     </entry>
     <entry>
-      <string>evacuacao.Exit</string>
+      <string>evacuacao.WallChunk</string>
       <int>1</int>
     </entry>
     <entry>
+      <string>evacuacao.Exit</string>
+      <int>2</int>
+    </entry>
+    <entry>
       <string>evacuacao.Soldier</string>
-      <int>3</int>
+      <int>4</int>
     </entry>
     <entry>
       <string>evacuacao.General</string>
-      <int>2</int>
+      <int>3</int>
     </entry>
   </layerOrder>
   <projections>

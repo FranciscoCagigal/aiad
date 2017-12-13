@@ -86,7 +86,7 @@ public class Launcher extends RepastSLauncher {
 				listOfSoldiers.add((AID) s.getAID());
 			}
 			
-			if(TYPE_OF_GAME!=2)
+			if(TYPE_OF_GAME<2)
 				for (int i = 0; i < NUMBER_GENERAL; i++) {				
 					General s = new General(space, grid,0,0,VISION_RADIUS,SPEAK_RADIUS);
 					mainContainer.acceptNewAgent("General" + i, s).start();								
@@ -99,7 +99,7 @@ public class Launcher extends RepastSLauncher {
 				
 				for (int i = 0; i < NUMBER_GENERAL; i++) {
 					listOfSoldiers.subList((int)soldierPerGeneral*(i), (int)soldierPerGeneral*(i+1));
-					General s = new General(space, grid,0,0,0.01,heightToSearch*i,listOfSoldiers.subList((int)soldierPerGeneral*(i), (int)soldierPerGeneral*(i+1)),MAP_X,MAP_Y,VISION_RADIUS,SPEAK_RADIUS);
+					General s = new General(space, grid,0,0,0.01,heightToSearch*i+0.01,listOfSoldiers.subList((int)soldierPerGeneral*(i), (int)soldierPerGeneral*(i+1)),MAP_X,MAP_Y,VISION_RADIUS,SPEAK_RADIUS,TYPE_OF_GAME);
 					mainContainer.acceptNewAgent("General" + i, s).start();								
 				}
 			}
@@ -134,13 +134,13 @@ public class Launcher extends RepastSLauncher {
 		NdPoint pt = space.getLocation(exit);
 		grid.moveTo(exit, (int) pt.getX(), (int) pt.getY());
 		
-		new Wall(context, space, grid, 5.5, 5, 5.5, 15);
-		new Wall(context, space, grid, 5.5, 15, 20, 15);
-		new Wall(context, space, grid, 20, 5, 20, 15);
-		new Wall(context, space, grid, 5.5, 5, 8, 5);
-		new Wall(context, space, grid, 12, 5, 20, 5);
+		new Wall(context, space, grid, 5, 5, 5, 15,false);
+		//new Wall(context, space, grid, 5.5, 15, 20, 15);
+		new Wall(context, space, grid, 20, 5, 20, 15,false);
+		//new Wall(context, space, grid, 5.5, 5, 8, 5);
+		//new Wall(context, space, grid, 12, 5, 20, 5);
 		
-		new Wall(context, space, grid, 1, 1, 1, 0);
-		new Wall(context, space, grid, 8, 1, 8, 0);
+		new Wall(context, space, grid, 1, 5, 1, 0,true);
+		new Wall(context, space, grid, 8, 1, 8, 0,false);
 	}	
 }
