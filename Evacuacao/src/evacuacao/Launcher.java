@@ -131,6 +131,13 @@ public class Launcher extends RepastSLauncher {
 		new Wall(context, space, grid, 20, 5, 20, 15);
 		new Wall(context, space, grid, 4, 5, 8, 5);
 		new Wall(context, space, grid, 12, 5, 20, 5);*/
+		Parameters params = RunEnvironment.getInstance().getParameters();
+		int TYPE_OF_MAP = params.getInteger("TYPE_OF_MAP");
+		if(TYPE_OF_MAP==1) {
+			new Wall(context, space, grid, 1, 38, 50, 38,false);
+			new Wall(context, space, grid, 43, 38, 43, 48,false);
+			new Wall(context, space, grid, 1, 45, 50, 45,false);
+		}
 		
 		new Wall(context, space, grid, 1, 5, 1, 0,true);
 		new Wall(context, space, grid, 8, 1, 8, 0,false);

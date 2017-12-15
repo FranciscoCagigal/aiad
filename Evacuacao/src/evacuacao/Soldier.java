@@ -69,7 +69,7 @@ public class Soldier extends MovableAgent {
 
 		space.moveTo(this, posX, posY);
 		grid.moveTo(this, (int) posX, (int) posY);
-		
+		updateMap();
 		addBehaviour(new ShareMap());
 		addBehaviour(new SearchForExit());
 		addBehaviour(new SoldierMessages());
@@ -236,7 +236,7 @@ public class Soldier extends MovableAgent {
 				NdPoint myPoint = moveToPlace(exitX,exitY,true);
 				if(myPoint.getX()==exitX && myPoint.getY()==exitY) {
 					stage = State.IS_IN_EXIT;
-					
+					System.out.println("oi " + RunEnvironment.getInstance().getCurrentSchedule().getTickCount());
 					myAgent.removeBehaviour(this);
 				}
 			}
@@ -454,7 +454,7 @@ public class Soldier extends MovableAgent {
 					goal = cell.getPoint();
 					exitX=goal.getX();
 					exitY=goal.getY();
-					stage=State.FOUND_EXIT;
+					//stage=State.FOUND_EXIT;
 					myAgent.removeBehaviour(this);
 					System.out.println("encontrei saída");
 				}
@@ -475,15 +475,16 @@ public class Soldier extends MovableAgent {
 			if(exitX!=-1) {
 				GridPoint pt = grid.getLocation(myAgent);
 				GridCellNgh<Soldier> nghCreator = new GridCellNgh<Soldier>(grid, pt, Soldier.class, speakRadius, speakRadius);
-				List<GridCell<Soldier>> gridCells = nghCreator.getNeighborhood(false);
+				List<GridCell<Soldier>> gridCells = nghCreator.getNeighborhood(true);
 				ACLMessage message_inform = new ACLMessage(ACLMessage.INFORM);
-				
+				int counter=0;
 				for (GridCell<Soldier> cell : gridCells) {
 					if (cell.size() > 0) {
 						
 						for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
 							if (obj  instanceof  Soldier) {
 								message_inform.addReceiver(((Soldier) obj).getAID());
+								counter++;
 							}
 						}		
 
@@ -491,13 +492,11 @@ public class Soldier extends MovableAgent {
 						message_inform.setConversationId("inform_exit");
 						message_inform.setReplyWith("inform_exit " + System.currentTimeMillis());
 						myAgent.send(message_inform);
-						
-						break;
 					}
 				}
 				
 				GridCellNgh<General> nghCreatorGen = new GridCellNgh<General>(grid, pt, General.class, speakRadius, speakRadius);
-				List<GridCell<General>> gridCellsGen = nghCreatorGen.getNeighborhood(false);
+				List<GridCell<General>> gridCellsGen = nghCreatorGen.getNeighborhood(true);
 				message_inform = new ACLMessage(ACLMessage.INFORM);
 				for (GridCell<General> cell : gridCellsGen) {
 					if (cell.size() > 0) {
@@ -505,6 +504,7 @@ public class Soldier extends MovableAgent {
 						for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
 							if (obj  instanceof  General) {
 								message_inform.addReceiver(((General) obj).getAID());
+								counter++;
 							}
 						}		
 
@@ -512,10 +512,13 @@ public class Soldier extends MovableAgent {
 						message_inform.setConversationId("inform_exit");
 						message_inform.setReplyWith("inform_exit " + System.currentTimeMillis());
 						myAgent.send(message_inform);
-						
-						break;
 					}
 				}
+				
+				if(counter>0) {
+					stage=State.FOUND_EXIT;
+				}
+				
 				if(stage == State.IS_IN_EXIT)
 					myAgent.removeBehaviour(this);
 			}			
@@ -528,12 +531,6 @@ public class Soldier extends MovableAgent {
 		}
 		
 	}
-	
-	private void bloodfill(NdPoint point) {
-				
-	}
-	
-
 	
 	private class MessageListener extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
@@ -570,7 +567,7 @@ public class Soldier extends MovableAgent {
 				String[] coords = message.split("-");
 				exitX = Integer.parseInt(coords[0]);
 				exitY = Integer.parseInt(coords[1]);
-				stage=State.FOUND_EXIT;
+				//stage=State.FOUND_EXIT;
 				transmitNewsToNearbySoldiers(myAgent.getAID()+"/"+0+"/-/"+Arrays.deepToString(myMap),"shareMap");
 				transmitNewsToNearbySoldiers(message,"inform_exit");
 			} catch (NullPointerException e) {
@@ -658,14 +655,16 @@ public class Soldier extends MovableAgent {
         @Override
         public void handleAllResponses(Vector proposes, Vector responses) {
             
-        	System.out.println("entrei aqui");
+        	System.out.println("entrei aqui " + proposes.size() + " " + responses.size());
         	
         	double minCost = Integer.MAX_VALUE;
             ACLMessage minCostProposal = null;
 
             for (Object proposeObj : proposes) {
+            	
             	if(proposeObj!=null) {
 	                ACLMessage propose = (ACLMessage) proposeObj;
+	                System.out.println("o custo recebido é de " + propose.getContent());
 	                double cost = Double.parseDouble(propose.getContent());
 	                if (cost < minCost) {
 	                    minCost = cost;
@@ -714,7 +713,7 @@ public class Soldier extends MovableAgent {
 					if (cell1.size() > 0) {
 						
 						for (Object  obj : grid.getObjectsAt(cell1.getPoint().getX(), cell1.getPoint().getY ())) {
-							if (obj  instanceof  Soldier) {
+							if (obj  instanceof  Soldier && !((Soldier) obj).getAID().equals(myAgent.getAID())) {
 								((Soldier) obj).setBerlimWall(wallToBeAbolished);
 								break;
 							}
@@ -748,7 +747,7 @@ public class Soldier extends MovableAgent {
             response.setContent("" + cost);
             System.out.println("mandei cost " + myAgent.getAID());
             stage=State.WAITING_FOR_DECISION;
-            
+            ForceReturnToState();
             return response;
         }
 
@@ -765,6 +764,7 @@ public class Soldier extends MovableAgent {
         }
         
         public void handleRejectProposal(ACLMessage cfp, ACLMessage propose, ACLMessage reject) {
+        	System.out.println("recebi reject " + myAgent.getAID());
         	stage=State.MOVING;
         }
     }

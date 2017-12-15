@@ -6,6 +6,12 @@
 						converter="repast.simphony.parameter.StringConverterFactory$IntConverter"
 									
 		/>
+				<parameter name="TYPE_OF_MAP" displayName="TYPE_OF_MAP" type="int" 
+						defaultValue="1" 
+						isReadOnly="false" 
+						converter="repast.simphony.parameter.StringConverterFactory$IntConverter"
+									
+		/>
 				<parameter name="N_SOLDIERS" displayName="N_SOLDIERS" type="int" 
 						defaultValue="4" 
 						isReadOnly="false" 

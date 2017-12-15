@@ -3,6 +3,7 @@ package evacuacao;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
@@ -267,7 +268,7 @@ public class General extends MovableAgent {
 					goal = cell.getPoint();
 					exitx=goal.getX();
 					exity=goal.getY();
-					stage=State.FOUND_EXIT;
+					//stage=State.FOUND_EXIT;
 					myAgent.removeBehaviour(this);
 					
 					addBehaviour(new ShareExit());
@@ -285,7 +286,7 @@ public class General extends MovableAgent {
 
 	}
 	
-	private void transmitNewsToNearbySoldiers(String content, String id,Boolean restriction) {
+	private int transmitNewsToNearbySoldiers(String content, String id,Boolean restriction) {
 		GridPoint pt = grid.getLocation(this);
 		GridCellNgh<Soldier> nghCreator = new GridCellNgh<Soldier>(grid, pt, Soldier.class, speakRadius, speakRadius);
 		List<GridCell<Soldier>> gridCells = nghCreator.getNeighborhood(true);
@@ -310,6 +311,7 @@ public class General extends MovableAgent {
 		message_inform.setConversationId(id);
 		message_inform.setReplyWith(id + " " + System.currentTimeMillis());
 		this.send(message_inform);
+		return counter;
 	}
 	
 	private class TellSoldiersArea extends OneShotBehaviour{
@@ -339,7 +341,8 @@ public class General extends MovableAgent {
 		@Override
 		public void action() {
 			if(exitx!=-1) {
-				transmitNewsToNearbySoldiers(exitx + "-" + exity,"inform_exit",false);
+				if(transmitNewsToNearbySoldiers(exitx + "-" + exity,"inform_exit",false)>0)
+					stage=State.FOUND_EXIT;
 				if(stage == State.IS_IN_EXIT)
 					myAgent.removeBehaviour(this);
 			}
@@ -387,7 +390,7 @@ public class General extends MovableAgent {
 					String[] coords = message.split("-");
 					exitx = Integer.parseInt(coords[0]);
 					exity = Integer.parseInt(coords[1]);
-					stage=State.FOUND_EXIT;
+					//stage=State.FOUND_EXIT;
 					transmitNewsToNearbySoldiers(message,"inform_exit",false);
 					addBehaviour(new ShareExit());
 					
@@ -403,7 +406,7 @@ public class General extends MovableAgent {
 					String[] coords = message.split("-");
 					exitx = Integer.parseInt(coords[0]);
 					exity = Integer.parseInt(coords[1]);
-					stage=State.FOUND_EXIT;
+					//stage=State.FOUND_EXIT;
 					transmitNewsToNearbySoldiers(message,"inform_exit",false);
 				} catch (NullPointerException e) {
 					
@@ -572,6 +575,8 @@ public class General extends MovableAgent {
         @Override
         public void handleAllResponses(Vector proposes, Vector responses) {
             double minCost = Double.MAX_VALUE;
+            System.out.println("entrei aqui " + proposes.size() + " " + responses.size());
+        	
             ACLMessage minCostProposal = null;
             for (Object proposeObj : proposes) {
             	if(proposeObj!=null) {
@@ -660,7 +665,7 @@ public class General extends MovableAgent {
             response.setContent("" + cost);
             
             stage=State.WAITING_FOR_DECISION;
-            
+            ForceReturnToState();
             return response;
         }
 
@@ -677,6 +682,7 @@ public class General extends MovableAgent {
         }
         
         public void handleRejectProposal(ACLMessage cfp, ACLMessage propose, ACLMessage reject) {
+        	 System.out.println("recebi reject " + myAgent.getAID());
         	stage=State.MOVING;
         }
     }

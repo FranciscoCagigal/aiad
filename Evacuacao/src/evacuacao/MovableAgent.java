@@ -61,7 +61,7 @@ public class MovableAgent extends Agent{
 	}
 	
 	NdPoint moveToPlace(double x, double y, Boolean greedy) {
-		updateMap();
+		
 		NdPoint  otherPoint = new  NdPoint(x,y);
 		if(!canMove(grid,space.getLocation(this),  otherPoint) && canAbollish(grid,space.getLocation(this),  otherPoint)) {
 			return null;
@@ -115,7 +115,7 @@ public class MovableAgent extends Agent{
 		
 
 		grid.moveTo(this , (int)myPoint.getX(), (int)myPoint.getY ());
-		
+		updateMap();
 		return myPoint;
 	}
 	
@@ -364,9 +364,9 @@ public class MovableAgent extends Agent{
 	
 	void updateMap() {
 		NdPoint myPoint = space.getLocation(this);
-		for (int i =- visionRadius; i <= visionRadius; i++) {
-			for (int j =- visionRadius; j <= visionRadius; j++) {
-				if (Math.pow(i, 2) + Math.pow(j, 2) <= Math.pow(visionRadius, 2)) {
+		for (int i =- visionRadius+1; i <= visionRadius+1; i++) {
+			for (int j =- visionRadius+1; j <= visionRadius+1; j++) {
+				if (Math.pow(i, 2) + Math.pow(j, 2) <= Math.pow(visionRadius+1, 2)) {
 					if ((int)myPoint.getY () + j >= 0 && (int)myPoint.getY () + j <= MAPY &&
 							(int)myPoint.getX () + i >= 0 && (int)myPoint.getX () + i <= MAPX) {
 						myMap[(int)myPoint.getX() + i][(int)myPoint.getY () + j] = true;				
@@ -553,4 +553,20 @@ public class MovableAgent extends Agent{
 		message_inform.setReplyWith(id + " " + System.currentTimeMillis());
 		this.send(message_inform);
 	}
+	
+	void ForceReturnToState() {
+		new Thread(new Runnable() {
+		    public void run() {
+		    	try {
+					Thread.sleep(2000);
+					if(stage==State.WAITING_FOR_DECISION) {
+						stage=State.MOVING;
+					}
+				} catch (InterruptedException e) {
+					
+				}
+		    }
+		}).start();
+	}
+	
 }
