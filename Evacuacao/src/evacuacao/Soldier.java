@@ -1,5 +1,6 @@
 package evacuacao;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -61,8 +62,13 @@ public class Soldier extends MovableAgent {
 			greedy=false;
 		else if(type_of_game==3)
 			greedy=true;
+		
 
 		stage = State.WAITING_FOR_START;
+		
+		if(type_of_game<2)
+			stage = State.MOVING;
+		
 	};
 	
 	protected void setup() {
@@ -229,16 +235,93 @@ public class Soldier extends MovableAgent {
 		private static final long serialVersionUID = 1L;
 		@Override
 
-		public void action() {			
-			if(exitX==-1) {
+		public void action() {
+			NdPoint myPoint;
+			switch(stage) {
+			case HELPING:
+				System.out.println("tenho de mover " + helpX + " " + helpY);
+				myPoint = moveToPlace(helpX,helpY,true);
+				
+				if(myPoint!=null &&  myPoint.getX()==helpX && myPoint.getY()==helpY) {
+					abolishWall();
+					System.out.println("demolir parede");
+					stage=State.MOVING;
+				}
+				break;
+			case MOVING:
 				moveRandom();
-			} else {
-				NdPoint myPoint = moveToPlace(exitX,exitY,true);
+				break;
+			case FOUND_EXIT:
+				
+				myPoint = moveToPlace(exitX,exitY,true);
 				if(myPoint.getX()==exitX && myPoint.getY()==exitY) {
 					stage = State.IS_IN_EXIT;
 					System.out.println("oi " + RunEnvironment.getInstance().getCurrentSchedule().getTickCount());
 					myAgent.removeBehaviour(this);
 				}
+				break;
+			
+			case WAITING_FOR_ANSWER:
+				if(wallToBeAbolished.wasDestroyed())
+					stage=State.MOVING;
+				break;
+			
+			case ASKING_FOR_HELP:
+				ACLMessage msg = new ACLMessage(ACLMessage.CFP);
+                msg.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+                DecimalFormat format = new DecimalFormat("#0.000");
+                
+                msg.setContent(Math.round(space.getLocation(myAgent).getX() * 1000d) / 1000d + "-" + Math.round(space.getLocation(myAgent).getY() * 1000d) / 1000d);
+                msg.setOntology("cryForHelp");
+                msg.setPerformative(ACLMessage.CFP);
+				msg.setConversationId("request_soldier"+id);
+				Date date = new Date();
+				date.setSeconds(date.getSeconds()+2);
+				msg.setReplyByDate(date);
+                GridPoint pt = grid.getLocation(myAgent);
+				
+				GridCellNgh<General> nghCreatorGeneral = new GridCellNgh<General>(grid, pt, General.class, speakRadius, speakRadius);
+				List<GridCell<General>> gridCellsGeneral = nghCreatorGeneral.getNeighborhood(true);
+				
+				int counter=0;
+				
+				for (GridCell<General> cell : gridCellsGeneral) {
+					if (cell.size() > 0) {
+						
+						for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
+							if (obj  instanceof  General) {
+								msg.addReceiver(((General) obj).getAID());
+								counter++;
+							}
+						}
+					}
+				}
+					
+				GridCellNgh<Soldier> nghCreatorGeneral1 = new GridCellNgh<Soldier>(grid, pt, Soldier.class, speakRadius, speakRadius);
+				List<GridCell<Soldier>> gridCellsGeneral1 = nghCreatorGeneral1.getNeighborhood(true);
+					
+					
+				for (GridCell<Soldier> cell1 : gridCellsGeneral1) {
+					if (cell1.size() > 0) {
+						
+						for (Object  obj : grid.getObjectsAt(cell1.getPoint().getX(), cell1.getPoint().getY ())) {
+							if (obj  instanceof  Soldier && !((Soldier) obj).getAID().equals(myAgent.getAID())) {
+								msg.addReceiver(((Soldier) obj).getAID());
+								counter++;
+							}
+						}
+					}
+				}
+                
+                String str = myAgent.getLocalName().replaceAll("\\D+","");
+                System.out.println("help me " + myAgent.getLocalName());
+                addBehaviour(new AskForHelp(msg));
+                if(counter>0) {
+                	stage=State.WAITING_FOR_ANSWER;
+                	addBehaviour(new AskForHelp(msg));
+                }
+                else stage=State.MOVING;
+				break;
 			}
 		}
 
@@ -650,6 +733,7 @@ public class Soldier extends MovableAgent {
 
 		AskForHelp(ACLMessage msg) {
             super(Soldier.this, msg);
+            System.out.println("pedi ajuda ");
         }
 
         @Override
@@ -687,7 +771,8 @@ public class Soldier extends MovableAgent {
                 ACLMessage selectedMessage = minCostProposal.createReply();
                 selectedMessage.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
                 helper=(sajas.core.AID) selectedMessage.getSender();
-                selectedMessage.setContent(space.getLocation(myAgent).getX() + "-" + space.getLocation(myAgent).getY());
+                selectedMessage.setContent(Math.round(space.getLocation(myAgent).getX() * 1000d) / 1000d + "-" + Math.round(space.getLocation(myAgent).getY() * 1000d) / 1000d);
+                
                 GridPoint pt = grid.getLocation(myAgent);
 				
 				GridCellNgh<General> nghCreatorGeneral = new GridCellNgh<General>(grid, pt, General.class, speakRadius, speakRadius);
@@ -698,8 +783,9 @@ public class Soldier extends MovableAgent {
 						
 						for (Object  obj : grid.getObjectsAt(cell.getPoint().getX(), cell.getPoint().getY ())) {
 							if (obj  instanceof  General && !((General) obj).getAID().equals(myAgent.getAID())) {
+								System.out.println("demole isto " + wallToBeAbolished);
+								System.out.println("demolidor " + ((General) obj).getAID());
 								((General) obj).setBerlimWall(wallToBeAbolished);
-								break;
 							}
 						}
 					}
@@ -714,8 +800,9 @@ public class Soldier extends MovableAgent {
 						
 						for (Object  obj : grid.getObjectsAt(cell1.getPoint().getX(), cell1.getPoint().getY ())) {
 							if (obj  instanceof  Soldier && !((Soldier) obj).getAID().equals(myAgent.getAID())) {
+								System.out.println("demole isto " + wallToBeAbolished);
+								System.out.println("demolidor " + ((Soldier) obj).getAID());
 								((Soldier) obj).setBerlimWall(wallToBeAbolished);
-								break;
 							}
 						}
 					}
@@ -743,6 +830,7 @@ public class Soldier extends MovableAgent {
             ACLMessage response = message.createReply();
             response.setPerformative(ACLMessage.PROPOSE);
             String[] coordinates = message.getContent().split("-");
+            DecimalFormat format = new DecimalFormat("00.000");
             double cost = Math.abs(Double.parseDouble(coordinates[0])-space.getLocation(myAgent).getX())+ Math.abs(Double.parseDouble(coordinates[1])-space.getLocation(myAgent).getY());
             response.setContent("" + cost);
             System.out.println("mandei cost " + myAgent.getAID());

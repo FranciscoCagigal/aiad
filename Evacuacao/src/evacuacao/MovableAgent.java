@@ -120,6 +120,7 @@ public class MovableAgent extends Agent{
 	}
 	
 	void abolishWall() {
+		System.out.println("demolir parede " + wallToBeAbolished);
 		if(wallToBeAbolished!=null)
 			wallToBeAbolished.destroyBerlimWall();
 	}
@@ -255,6 +256,9 @@ public class MovableAgent extends Agent{
 		
 		GridPoint currentPos = grid.getLocation(this);
 		GridPoint nextPos = path.get(0);
+		if(!canMove(grid,space.getLocation(this),  new NdPoint(nextPos.getX(),nextPos.getY())) && canAbollish(grid,space.getLocation(this), new NdPoint(nextPos.getX(),nextPos.getY()))) {
+			return;
+		}
 		double angle = 0;
 		int dx = nextPos.getX() - currentPos.getX();
 		int dy = nextPos.getY() - currentPos.getY();
